@@ -1,0 +1,52 @@
+{
+	"name": "bazara_plugin",
+	"version": "2.1421",
+	"download_url": "https://dl.mahaksoft.com/Download/bazara-2.1421.zip",
+
+	"homepage": "https://www.mahaksoft.com/",
+	"requires": "4.5",
+	"tested": "4.8",
+	"last_updated": "2021-10-22 16:17:00",
+	"upgrade_notice": "آپدیت جدیدی برای پلاگین بازارا منتشر شده است",
+
+	"author": "محک سافت",
+	"author_homepage": "https://www.mahaksoft.com/",
+
+	"sections": {
+		"description": "افزونه ای برای همگام سازی نرم افزار حسابداری محک و وردپرس",
+		"installation": "",
+		"changelog": "",
+		"custom_section": ""
+	},
+	
+	"icons" : {
+		"1x" : "http://w-shadow.com/files/external-update-example/assets/icon-128x128.png",
+		"2x" : "http://w-shadow.com/files/external-update-example/assets/icon-256x256.png"
+    },
+
+	"banners": {
+		"low": "http://w-shadow.com/files/external-update-example/assets/banner-772x250.png",
+		"high": "http://w-shadow.com/files/external-update-example/assets/banner-1544x500.png"
+	},
+
+	"translations": [
+		{
+			"language": "fr_FR",
+			"version": "4.0",
+			"updated": "2016-04-22 23:22:42",
+			"package": "http://example.com/updates/translations/french-language-pack.zip"
+		},
+		{
+			"language": "de_DE",
+			"version": "5.0",
+			"updated": "2016-04-22 23:22:42",
+			"package": "http://example.com/updates/translations/german-language-pack.zip"
+		}
+	],
+
+	"rating": 90,
+	"num_ratings": 123,
+
+	"downloaded": 1234,
+	"active_installs": 12345
+}

@@ -1,0 +1,349 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Bazara\n"
+"POT-Creation-Date: 2022-11-14 10:23+0330\n"
+"PO-Revision-Date: 2022-11-14 10:23+0330\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: fa_IR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.2\n"
+"X-Poedit-Basepath: ..\n"
+"Plural-Forms: nplurals=2; plural=(n==0 || n==1);\n"
+"X-Poedit-Flags-xgettext: --add-comments=translators:\n"
+"X-Poedit-WPHeader: bazara.php\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-KeywordsList: __;_e;_n:1,2;_x:1,2c;_ex:1,2c;_nx:4c,1,2;esc_attr__;"
+"esc_attr_e;esc_attr_x:1,2c;esc_html__;esc_html_e;esc_html_x:1,2c;_n_noop:1,2;"
+"_nx_noop:3c,1,2;__ngettext_noop:1,2\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: *.js\n"
+
+#: admin/ui/templates/persons-tab.php:75
+msgid "تعریف شخص جدید در نرم افزار حسابداری"
+msgstr ""
+
+#: admin/ui/templates/persons-tab.php:76
+msgid ""
+"عدم تعریف شخص جدید در نرم افزار حسابداری و ارسال سفارشات با شخص از پیش تعریف "
+"شده در نرم افزار حسابداری"
+msgstr ""
+
+#: admin/ui/templates/price-tab.php:123
+msgid " سطوح تخفیف درصدی"
+msgstr ""
+
+#: admin/ui/templates/price-tab.php:158
+msgid " سطح قیمتی"
+msgstr ""
+
+#: admin/ui/templates/products-tab.php:113
+msgid "دسته بندی ها"
+msgstr ""
+
+#: admin/ui/templates/products-tab.php:117
+msgid " گروه ها"
+msgstr ""
+
+#: admin/woo_products_panel_hooks.php:14
+msgid "اطلاعات محک"
+msgstr ""
+
+#: admin/woo_products_panel_hooks.php:34
+msgid "کد کالا"
+msgstr ""
+
+#: admin/woo_products_panel_hooks.php:39
+msgid "کد انبار"
+msgstr ""
+
+#: admin/woo_products_panel_hooks.php:44
+msgid "مالیات"
+msgstr ""
+
+#: admin/woo_products_panel_hooks.php:49
+msgid "عوارض"
+msgstr ""
+
+#: admin/woo_products_panel_hooks.php:54
+msgid "بارکد"
+msgstr ""
+
+#: classes/class.bazara.api.php:112
+msgid ""
+"HTTP Error In Login. Please check your internet connection or may be mahak "
+"service is not available now."
+msgstr ""
+
+#: classes/class.bazara.api.php:1548
+msgid "Username can not create because Both of Email and Mobile are empty."
+msgstr ""
+
+#: classes/class.bazara.lang.php:6
+msgid "By this plugin sync your mahak accounting data to your eshop"
+msgstr ""
+
+#: classes/class.bazara.lang.php:7
+msgid "Set plugin behavior setting"
+msgstr ""
+
+#: classes/class.bazara.lang.php:8
+msgid "Mahak Username:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:9
+msgid "Mahak Password:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:10
+msgid "System Sync ID:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:11
+msgid "Package Number:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:12
+msgid "Add Non Exist Customers:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:13
+msgid "Banks Account:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:14
+msgid "Enter Mahak Soft Username."
+msgstr ""
+
+#: classes/class.bazara.lang.php:15
+msgid "Enter Mahak Soft Password."
+msgstr ""
+
+#: classes/class.bazara.lang.php:16
+msgid "Get your systemSyncID from mahak soft team and enter here."
+msgstr ""
+
+#: classes/class.bazara.lang.php:17
+msgid ""
+"While syncing invoice or customers, add non exist customers to mahak soft."
+msgstr ""
+
+#: classes/class.bazara.lang.php:18
+msgid ""
+"relating payment method to bank account. each line put a bank. format: "
+"\"payment method=bank:account\""
+msgstr ""
+
+#: classes/class.bazara.lang.php:19
+msgid "Start Syncing."
+msgstr ""
+
+#: classes/class.bazara.lang.php:20
+msgid "please select items you want to be sync:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:21 classes/class.products.table.php:14
+#: classes/class.products.table.php:15
+msgid "products"
+msgstr ""
+
+#: classes/class.bazara.lang.php:22
+msgid ""
+"attention: Because of mahak restricting, sysncing will be done from mahak "
+"server to this web site."
+msgstr ""
+
+#: classes/class.bazara.lang.php:23
+msgid "customers"
+msgstr ""
+
+#: classes/class.bazara.lang.php:24
+msgid ""
+"attention: Because of mahak restricting, only new persons send to server."
+msgstr ""
+
+#: classes/class.bazara.lang.php:25
+msgid "orders:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:26
+msgid "Add Category:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:27
+msgid "Add Group:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:28
+msgid "attention: direction is only from site to server."
+msgstr ""
+
+#: classes/class.bazara.lang.php:29
+msgid "Result Logs:"
+msgstr ""
+
+#: classes/class.bazara.lang.php:30 init.php:104
+msgid "Bazara Syncronizer"
+msgstr ""
+
+#: classes/class.bazara.lang.php:31
+msgid "Logs"
+msgstr ""
+
+#: classes/class.bazara.lang.php:32
+msgid ""
+"only txt file format that delimated by tab char accepted.maximum file size: "
+"10MB"
+msgstr ""
+
+#: classes/class.bazara.lang.php:33
+msgid "invalid file format.valid file format is:txt"
+msgstr ""
+
+#: classes/class.bazara.lang.php:34
+msgid "maximum allowed file size is 10MB."
+msgstr ""
+
+#: classes/class.products.table.php:84
+msgid "No Products avaliable."
+msgstr ""
+
+#: classes/class.products.table.php:152
+msgid "ProductCode"
+msgstr ""
+
+#: classes/class.products.table.php:153
+msgid "ProductName"
+msgstr ""
+
+#: classes/class.products.table.php:154
+msgid "isSync"
+msgstr ""
+
+#: classes/class.products.table.php:155
+msgid "PostID"
+msgstr ""
+
+#: classes/functions.php:1224
+#, php-format
+msgid "No %s is associated with #%d"
+msgstr ""
+
+#: classes/functions.php:1258
+#, php-format
+msgid "This %s cannot be deleted"
+msgstr ""
+
+#: classes/functions.php:1872
+msgid "mahak username is empty. please set username first."
+msgstr ""
+
+#: classes/functions.php:1874
+msgid "mahak password is empty. please set password first."
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:54
+msgid "View details"
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:77
+#, php-format
+msgid "More information about %s"
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:128
+msgid "Check for updates"
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:214
+#, php-format
+msgctxt "the plugin title"
+msgid "The %s plugin is up to date."
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:216
+#, php-format
+msgctxt "the plugin title"
+msgid "A new version of the %s plugin is available."
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:218
+#, php-format
+msgctxt "the plugin title"
+msgid "Could not determine if updates are available for %s."
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Plugin/Ui.php:224
+#, php-format
+msgid "Unknown update checker status \"%s\""
+msgstr ""
+
+#: classes/plugin-update-checker-4.13/Puc/v4p13/Vcs/PluginUpdateChecker.php:100
+msgid "There is no changelog available."
+msgstr ""
+
+#: classes/product/import.php:99
+msgid "Success"
+msgstr ""
+
+#: classes/product/import.php:103 classes/product/import.php:108
+msgid "Failed/Skipped"
+msgstr ""
+
+#: classes/product/import.php:103 classes/product/import.php:108
+msgid "Untitled"
+msgstr ""
+
+#. translators: %d: product ID
+#: classes/product/import.php:477
+#, php-format
+msgid "Invalid product ID %d."
+msgstr ""
+
+#: init.php:103
+msgid "Bazara API Settings"
+msgstr ""
+
+#: init.php:111
+msgid "لیست محصولات"
+msgstr ""
+
+#: init.php:173 init.php:185
+#, php-format
+msgid ""
+"The Minimum PHP Version Requirement for <b>Order Notification</b> is %s. You "
+"are Running PHP %s"
+msgstr ""
+
+#: libs/wc-city-select.php:85
+msgid "required"
+msgstr ""
+
+#: libs/wc-city-select.php:124 libs/wc-city-select.php:164
+msgid "Select an option&hellip;"
+msgstr ""
+
+#. Plugin Name of the plugin/theme
+msgid "Bazara"
+msgstr ""
+
+#. Plugin URI of the plugin/theme
+msgid ""
+"plugin URI: https://www.mahaksoft.com/%d8%b3%d8%a7%db%8c%d8%b1-%d8%ae%d8%af"
+"%d9%85%d8%a7%d8%aa-%d8%b4%d8%b1%da%a9%d8%aa/%d9%85%d8%b1%da%a9%d8%b2-%d8%af"
+"%d8%a7%d9%86%d9%84%d9%88%d8%af/stacker-order-and-sales-system/"
+msgstr ""
+
+#. Description of the plugin/theme
+msgid "افزونه ای برای همگام سازی نرم افزار حسابداری محک و وردپرس"
+msgstr ""
+
+#. Author of the plugin/theme
+msgid "گروه نرم افزاری محک"
+msgstr ""
+
+#. Author URI of the plugin/theme
+msgid "https://www.mahaksoft.com/"
+msgstr ""

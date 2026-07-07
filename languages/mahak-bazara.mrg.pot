@@ -1,0 +1,235 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: افزونه هماهنگ کننده نرم افزار حسابداری محک\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-11-11 13:02+0300\n"
+"PO-Revision-Date: 2021-11-11 13:02+0300\n"
+"Last-Translator: میهن وردپرس <ali@sdfd.com>\n"
+"Language-Team: فارسی\n"
+"Language: fa_IR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+"X-Generator: Eazy Po 0.9.5.3\n"
+"X-Loco-Version: 2.2.0; wp-4.9.10\n"
+
+#: mahak-bazara.php:17
+msgid "By this plugin sync your mahak accounting data to your eshop"
+msgstr ""
+"به وسیله این پلاگین، اطلاعات نرم افزار حسابداری محک را با فروشگاه اینترنتی "
+"خود همگام سازی کنید."
+
+#: mahak-bazara.php:18
+msgid "Set plugin behavior setting"
+msgstr "تنظیمات پلاگین"
+
+#: mahak-bazara.php:19 admin/settings-register.php:64
+msgid "Mahak Username:"
+msgstr "نام کاربری :"
+
+#: mahak-bazara.php:20 admin/settings-register.php:72
+msgid "Mahak Password:"
+msgstr "کلمه عبور :"
+
+#: mahak-bazara.php:21 admin/settings-register.php:80
+msgid "System Sync ID:"
+msgstr "شناسه پایگاه داده:"
+
+#: mahak-bazara.php:21 admin/settings-register.php:80
+msgid "Package Number:"
+msgstr "شماره بسته :"
+
+#: mahak-bazara.php:22
+msgid "Add Non Exist Customers:"
+msgstr ""
+
+#: mahak-bazara.php:23 admin/settings-register.php:88
+msgid "Banks Account:"
+msgstr "حساب های بانکی:"
+
+#: mahak-bazara.php:24 admin/settings-register.php:68
+msgid "Enter Mahak Soft Username."
+msgstr "نام کاربری خود را وارد کنید."
+
+#: mahak-bazara.php:24 admin/settings-register.php:68
+msgid "Enter packageNumber."
+msgstr "شماره بسته خود را وارد کنید."
+
+#: mahak-bazara.php:25 admin/settings-register.php:76
+msgid "Enter Mahak Soft Password."
+msgstr "کلمه عبور خود را وارد کنید."
+
+#: mahak-bazara.php:26 admin/settings-register.php:84
+msgid "Get your systemSyncID from mahak soft team and enter here."
+msgstr ""
+"شناسه پایگاه داده خود را از پشتیبانی محک دریافت کنید و در اینجا وارد کنید."
+
+#: mahak-bazara.php:27
+msgid ""
+"While syncing invoice or customers, add non exist customers to mahak soft."
+msgstr ""
+
+#: mahak-bazara.php:28 admin/settings-register.php:92
+msgid ""
+"relating payment method to bank account. each line put a bank. format: "
+"\"payment method=bank:account\""
+msgstr ""
+"تعیین ارتباط شماره حساب بانکی با پرداخت ها. لطفا هر حساب در یک سطر نوشته شود."
+" فرمت قابل قبول به صورت زیر می باشد:\n"
+"payment method=bank:account number مثال zarinpal=zarin:464654654"
+
+#: mahak-bazara.php:29 admin/settings-page.php:31
+msgid "Start Syncing."
+msgstr "شروع همگام سازی"
+
+#: mahak-bazara.php:30 admin/settings-page.php:35
+msgid "please select items you want to be sync:"
+msgstr "لطفا مواردی که می خواهید همگام سازی شوند را انتخاب کنید:"
+
+#: mahak-bazara.php:31 admin/settings-page.php:38
+msgid "products"
+msgstr "محصولات"
+
+#: class.mahak.settings.php:31 admin/settings-page.php:38
+msgid "Add Category"
+msgstr "گروه به محصولایت اضافه شود"
+
+#: mahak-bazara.php:31 admin/settings-page.php:38
+msgid "Add Group"
+msgstr "دسته بندی به محصولایت اضافه شود"
+
+#: mahak-bazara.php:32 admin/settings-page.php:38
+msgid ""
+"attention: Because of mahak restricting, sysncing will be done from mahak "
+"server to this web site."
+msgstr ""
+
+#: mahak-bazara.php:33 admin/settings-page.php:39
+msgid "customers"
+msgstr "مشتریان"
+
+#: mahak-bazara.php:34 admin/settings-page.php:39
+msgid ""
+"attention: Because of mahak restricting, only new persons send to server."
+msgstr ""
+"توجه: به دلیل ساختار وب سرویسی نرم افزار محک، فقط مشتریان جدید به سرور ارسال "
+"می شوند و تغییرات مشتریان قبلی ارسال نخواهد شد."
+
+#: mahak-bazara.php:35
+msgid "orders:"
+msgstr "سفارشات:"
+
+#: mahak-bazara.php:36 admin/settings-page.php:40
+msgid "attention: direction is only from site to server."
+msgstr ""
+"توجه: ارسال اطلاعات سفارشات فقط از وب سایت به سمت نرم افزار محک می باشد و "
+"اطلاعات سفارشات و فاکتور ها از نرم افزار محک دریافت نخواهد شد."
+
+#: mahak-bazara.php:37
+msgid "Result Logs:"
+msgstr "گزارش عملیات:"
+
+#: mahak-bazara.php:38 mahak-bazara.php:82
+msgid "Bazara Syncronizer"
+msgstr "بازارا"
+
+#: mahak-bazara.php:39
+msgid "Logs"
+msgstr "گزارش"
+
+#: mahak-bazara.php:40
+msgid ""
+"only txt file format that delimated by tab char accepted.maximum file size: "
+"10MB"
+msgstr ""
+
+#: mahak-bazara.php:41
+msgid "invalid file format.valid file format is:txt"
+msgstr ""
+
+#: mahak-bazara.php:42
+msgid "maximum allowed file size is 10MB."
+msgstr ""
+
+#: mahak-bazara.php:81
+msgid "Bazara API Settings"
+msgstr "فرم تنظیمات اتصال به نرم افزار حسابداری محک"
+
+#: mahak-bazara.php:104
+msgid "Upload Product Category File"
+msgstr "بارگذاری فایل دسته بندی های محصول"
+
+#: mahak-bazara.php:105
+msgid "Upload Category File"
+msgstr "بارگذاری فایل دسته بندی ها"
+
+#: admin/settings-page.php:40
+msgid "orders"
+msgstr "سفارشات"
+
+#: admin/settings-page.php:43
+msgid "Upload Images By Recieve Product Data"
+msgstr "بارگذاری تصاویر محصولات همزمان با دریافت محصولات"
+
+#: admin/settings-page.php:48
+msgid "Result Logs"
+msgstr "گزارش عملیات"
+
+#: admin/settings-register.php:44
+msgid "By this plugin sync your mahak accounting data to your eshop "
+msgstr ""
+"به وسیله این پلاگین، اطلاعات نرم افزار حسابداری محک را با فروشگاه اینترنتی "
+"خود همگام سازی کنید."
+
+#: admin/upload-category-file.php:48
+msgid "حداکثر سایز فایل مجاز 10 مگابایت می باشد."
+msgstr ""
+
+#: admin/upload-category-file.php:132
+msgid "فقط فایل متنی با حداکثر حجم 10 مگابایت قابل قبول می باشد."
+msgstr ""
+
+#: includes/class-bazara-api-handler.php:324
+msgid "Username can not create because Both of Email and Mobile are empty."
+msgstr "ایمیل و موبایل خالی هستند بنابراین نام کاربری قابل ایجاد نمی باشد."
+
+#: includes/core-functions.php:81
+msgid "mahak username is empty. please set username first."
+msgstr "نام کاربری خالی است. لطفا نام کاربری را ثبت کنید."
+
+#: includes/core-functions.php:83
+msgid "mahak password is empty. please set password first."
+msgstr "کلمه عبور خالی است. لطفا کلمه عبور را ثبت کنید."
+
+#: includes/core-functions.php:85
+msgid "mahak systemSyncID is empty. please set systemSyncID first."
+msgstr "شناسه پایگاه داده خالی است. لطفا شناسه پایگاه داده را ثبت کنید."
+
+#.  Name of the plugin
+#.  Description of the plugin
+msgid "افزونه بازارا نرم افزار حسابداری محک"
+msgstr ""
+
+#.  URI of the plugin
+#.  Author URI of the plugin
+msgid "https://www.mahaksoft.com/"
+msgstr ""
+
+#.  Author of the plugin
+msgid "علی طحان"
+msgstr ""
+
+#~ msgid "افزونه هماهنگ کننده نرم افزار حسابداری محک"
+#~ msgstr ""
+
+#~ msgid "https://mahak.ir/"
+#~ msgstr ""
+
+#~ msgid "مسترپیجز"
+#~ msgstr ""

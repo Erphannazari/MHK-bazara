@@ -1,0 +1,61 @@
+.text-center{  text-align: center;}
+.m-b-20{  margin-bottom: 20px;}
+.start-sync {  padding: 10px;background-color: #ddd; margin-bottom: 20px}
+.start-sync .setting-result-log,.start-sync .result-log {  padding: 10px;background-color: #fff;}
+.setting-result-log-box ,.result-log-box {display: none;padding-top:10px;}
+.setting-result-log-box ,.result-log-box label {color: red;}
+.validation{color:red;}
+.loader{display: none;}
+#wpbody * {font-family: tahoma;}
+.column-matching{ display:table; clear: both;}
+.column-matching .form-group{	float:right;	width: 100px;	padding: 5px; text-align: center;}
+.column-matching .form-group label{	display: block;;}
+.column-matching .form-group input{	width: 50px;}
+.factor-wrap{display: flex; justify-content: center;}
+.factor-container {width: 75%;background-color: #fff;padding: 15px;border: 1px solid #ddd;}
+.factor-container .factor-header{display: flex;justify-content: space-between;margin-bottom: 15px;}
+.factor-container .factor-header .icon img{max-height: 100px;}
+.factor-container .factor-header .f-title {font-size: 18px; font-weight: bold;padding-top: 15px;}
+.factor-container .factor-header .f-date {font-size: 14px;padding-top: 15px;}
+.factor-items table {width: 100%;text-align: center;border: 1px solid #ddd;border-spacing: 0;border-collapse: collapse;margin-bottom: 10px;}
+.factor-items table thead th{padding: 5px;background-color: #eee; color: grey;}
+.factor-items table tbody tr{border-bottom: 1px dashed #c7c7c7;}
+.factor-items table tbody tr:last-child {border-bottom: none;}
+.factor-items table tbody td {padding: 10px;}
+.factor-container .factor-total {text-align:left;}
+.factor-container .factor-total > div {border: 1px solid #dadada;font-weight:bold;display: inline-block;padding: 10px 60px;border-radius: 10px;line-height: 2;text-align: right;background-color: #eee;margin-bottom:10px;}
+.mahak-dashboard {padding: 15px; background-color: #fff;}
+.mahak-dashboard .factor-container {width:100%;}
+.mahak-dashboard .header-title{text-align: center; border-bottom: 2px solid orange; color: orange;padding-bottom: 10px;margin-bottom: 20px}
+.icon-boxes {display: flex; justify-content: space-between;}
+.icon-boxes .icon-box {margin:5px; background-color: #eee; display:flex; flex-basis: 4; border:1px solid #eee;padding: 20px;height: 160px; transition: all 0.3s}
+.icon-boxes .icon-box:hover {box-shadow: 0 0 10px #ccc}
+.icon-boxes .icon {width: 75px; display: flex; justify-content: center;}
+.icon-boxes .icon img {max-width: 100%;}
+.icon-boxes .content {}
+.icon-boxes .content .title {font-size: 14px; color: grey}
+.icon-boxes .content .value {font-weight: bold; font-size: 36px; color: orange; text-align: center;}
+.icon-boxes .content .link a {font-size: 12px; color: #aaa}
+.icon-boxes .content .link a:hover {color: grey}
+#tblRolePrices th, #tblRolePrices td {padding:5px;}
+/* This is the submit button styles */
+.elementor-button-spinner.success:before {
+    content: "\f147";
+    color: #46b450;
+}
+
+.elementor-button-spinner:before {
+    font: normal 20px/.5 dashicons;
+    speak: none;
+    display: inline-block;
+    padding: 0;
+    top: 8px;
+    right: -4px;
+    position: relative;
+    vertical-align: top;
+    content: "\f463";
+}
+.elementor-button-spinner.loading:before {
+    -webkit-animation: rotation 1s linear infinite;
+    animation: rotation 1s linear infinite;
+}
