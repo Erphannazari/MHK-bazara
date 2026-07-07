@@ -312,6 +312,10 @@ function get_last_row_version($tbl = 'product')
             $table = 'bazara_persons';
             $id = 'PersonId';
             break;
+        case 'VisitorPersons':
+            $table = 'bazara_visitor_persons';
+            $id = 'v_p_id';
+            break;
         case 'SubCategory':
             $table = 'bazara_sub_category';
             $id = 'ProductCategoryId';
@@ -475,6 +479,7 @@ function change_visitor()
         'bazara_category',
         'bazara_pictures',
         'bazara_persons',
+        'bazara_visitor_persons',
         'bazara_banks',
         'bazara_sub_category',
         'bazara_orders',
@@ -3176,7 +3181,8 @@ function bazara_run_product_synchronize()
                 'Pictures',
                 'PhotoGalleries',
                 'Banks',
-                'Persons',
+                'VisitorPersonSync',
+                'PersonSync',
                 'SubCategory',
                 'Orders',
                 'OrderDetails',
@@ -3194,7 +3200,8 @@ function bazara_run_product_synchronize()
                 'Pictures',
                 'PhotoGalleries',
                 'Banks',
-                'Persons',
+                'VisitorPersonSync',
+                'PersonSync',
                 'SubCategory',
                 'Orders',
                 'OrderDetails',

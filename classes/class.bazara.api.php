@@ -51,6 +51,7 @@ class BazaraApi
             'PhotoGalleries' => array('entity' => 'fromPhotoGalleryVersion', 'alias' => 'PhotoGalleries'),
             'Banks' => array('entity' => 'fromBankVersion', 'alias' => 'Banks'),
             'Persons' => array('entity' => 'fromPersonVersion', 'alias' => 'Persons'),
+            'VisitorPersons' => array('entity' => 'fromVisitorPersonVersion', 'alias' => 'VisitorPersons'),
             'SubCategory' => array('entity' => 'fromProductCategoryVersion', 'alias' => 'SubCategory'),
             'Transactions' => array('entity' => 'fromtransactionversion', 'alias' => 'Transactions'),
             'Orders' => array('entity' => 'fromOrderVersion', 'alias' => 'Orders'),
@@ -176,6 +177,8 @@ class BazaraApi
         $tblname = array('table' => 'bazara_photo_gallery', 'id' => "PhotoGalleryId", 'entity' => 'PhotoGallery');
         $sq[] = $tblname;
         $tblname = array('table' => 'bazara_persons', 'id' => "PersonId", 'entity' => 'person');
+        $sq[] = $tblname;
+        $tblname = array('table' => 'bazara_visitor_persons', 'id' => "VisitorPersonId", 'entity' => 'visitorPerson');
         $sq[] = $tblname;
         $tblname = array('table' => 'bazara_person_groups', 'id' => "PersonGroupId", 'entity' => 'personGroup');
         $sq[] = $tblname;
@@ -1137,6 +1140,14 @@ class BazaraApi
         if ($type === 'ProductSync') {
             return $this->sync_combined_products($token, $min, $max);
         }
+        
+        if ($type === 'VisitorPersonSync') {
+            return $this->sync_visitor_persons($token, $min, $max);
+        }
+        
+        if ($type === 'PersonSync') {
+            return $this->sync_combined_persons($token, $min, $max);
+        }
 
         if ($this->entities[$type]['alias'] == 'Settings')
             $latest_rowVersion =  empty(get_last_row_version("Settings")) ? 0 : (get_last_row_version("Settings"));
@@ -1762,6 +1773,34 @@ class BazaraApi
                     }
                 }
                 break;
+
+                case 'VisitorPersons':
+                    $VisitorPersons = $product_result['message']['VisitorPersons'];
+                    if (!empty($VisitorPersons)) {
+                        usort($VisitorPersons, function ($item1, $item2) {
+                            if ($item1['RowVersion'] == $item2['RowVersion']) return 0;
+                            return $item1['RowVersion'] < $item2['RowVersion'] ? -1 : 1;
+                        });
+                        $index = 0;
+                        foreach ($VisitorPersons as $visitorPerson) {
+                            $index++;
+                            if ($index <= $min)
+                                continue;
+                            if ($index > $max)
+                                break;
+                            $product_items = array(
+                                'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
+                                'PersonId' => ($visitorPerson['PersonId']),
+                                'VisitorId' => $visitorPerson['VisitorId'],
+                                'Deleted' => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
+                                'RowVersion' => $visitorPerson['RowVersion'],
+                            );
+    
+                            insert('bazara_visitor_persons', $product_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
+                        }
+                    }
+                    break;
+
             case 'Transactions':
                 $Transactions =   $product_result['message']['Transactions'];
                 if (!empty($Transactions)) {
@@ -3980,4 +4019,151 @@ private function get_all_roles() {
 
         return array('success' => true, 'message' => '');
     }
+    
+/**
+ * سینک جداگانه Persons 
+ * (VisitorPersons پردازش نمی‌شود - فقط نسخه آن ارسال می‌شود)
+ */
+private function sync_combined_persons($token, $min = 0, $max = 20)
+{
+    // دریافت آخرین نسخه‌ها
+    $person_latest_rv        = get_last_row_version("Persons") ?: 0;
+    $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
+
+    // آماده‌سازی داده برای API - هر دو نسخه ارسال می‌شود
+    $data = array(
+        "fromPersonVersion"       => $person_latest_rv,
+        "fromVisitorPersonVersion"=> $visitorPerson_latest_rv,
+    );
+
+    // دریافت داده از سرور
+    $result = $this->get_all_data($token, $data);
+
+    if (!$result['success']) {
+        return array('count' => 0, 'error' => $result['message'], 'success' => false);
+    }
+
+    $processedPersons = 0;
+    $batchSize = $max;
+
+    // ==================== Process Persons فقط ====================
+    if (!empty($result['message']['People'])) {
+        $Peoples = $result['message']['People'];
+
+        // مرتب‌سازی بر اساس RowVersion
+        usort($Peoples, function ($a, $b) {
+            return $a['RowVersion'] <=> $b['RowVersion'];
+        });
+
+        foreach ($Peoples as $People) {
+            if ($processedPersons >= $batchSize) {
+                break;
+            }
+
+            $processedPersons++;
+
+            $person_items = array(
+                'PersonId'       => $People['PersonId'],
+                'PersonClientId' => $People['PersonClientId'] ?? null,
+                'PersonGroupId'  => $People['PersonGroupId'] ?? null,
+                'PersonCode'     => $People['PersonCode'] ?? null,
+                'FirstName'      => $People['FirstName'] ?? '',
+                'LastName'       => $People['LastName'] ?? '',
+                'Email'          => $People['Email'] ?? null,
+                'Deleted'        => ($People['Deleted'] == 'true' ? 1 : 0),
+                'RowVersion'     => $People['RowVersion'],
+                'isSync'         => 0,
+                'Mobile'         => $People['Mobile'] ?? null,
+                'Address'        => $People['Address'] ?? null,
+            );
+
+            // درج رکورد
+            insert('bazara_persons', $person_items, 'PersonId', $People['PersonId']);
+
+            // به‌روزرسانی نسخه
+            bazara_update_latest_versions('persons', $People['RowVersion']);
+        }
+    }
+
+    // لاگ برای دیباگ
+    if ($processedPersons > 0) {
+        error_log("Synced {$processedPersons} Persons successfully. Last RowVersion updated.");
+    }
+
+    return array(
+        'success' => true,
+        'count'   => $processedPersons,
+        'message' => "{$processedPersons} person(s) processed successfully."
+    );
+}
+    
+    /**
+ * سینک جداگانه VisitorPersons
+ */
+private function sync_visitor_persons($token, $min = 0, $max = 20)
+{
+    // دریافت آخرین نسخه‌ها
+    $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
+
+    // آماده‌سازی داده برای API
+    $data = array(
+        "fromVisitorPersonVersion" => $visitorPerson_latest_rv,
+        // اگر نیاز به ارسال fromPersonVersion هم هست، می‌توانی اضافه کنی
+        // "fromPersonVersion" => get_last_row_version("Persons") ?: 0,
+    );
+
+    // دریافت داده از سرور
+    $result = $this->get_all_data($token, $data);
+
+    if (!$result['success']) {
+        return array('count' => 0, 'error' => $result['message'], 'success' => false);
+    }
+
+    $processedCount = 0;
+    $batchSize = $max;
+
+    // ==================== Process VisitorPersons ====================
+    if (!empty($result['message']['VisitorPeople'])) {   // <<< مهم: نام کلید را چک کن
+        $VisitorPersons = $result['message']['VisitorPeople'];
+
+        // مرتب‌سازی بر اساس RowVersion
+        usort($VisitorPersons, function ($a, $b) {
+            return $a['RowVersion'] <=> $b['RowVersion'];
+        });
+
+        foreach ($VisitorPersons as $visitorPerson) {
+            if ($processedCount >= $batchSize) {
+                break;
+            }
+
+            $processedCount++;
+
+            $visitor_items = array(
+                'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
+                'PersonId'        => $visitorPerson['PersonId'] ?? null,
+                'VisitorId'       => $visitorPerson['VisitorId'] ?? null,
+                'Deleted'         => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
+                'RowVersion'      => $visitorPerson['RowVersion'],
+                // سایر فیلدهای مورد نیاز را اینجا اضافه کنید
+            );
+
+            // درج در جدول
+            insert('bazara_visitor_persons', $visitor_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
+
+            // به‌روزرسانی آخرین نسخه
+            bazara_update_latest_versions('VisitorPersons', $visitorPerson['RowVersion']);
+        }
+    }
+
+    // لاگ برای دیباگ
+    if ($processedCount > 0) {
+        error_log("Synced {$processedCount} VisitorPersons successfully.");
+    }
+
+    return array(
+        'success' => true,
+        'count'   => $processedCount,
+        'message' => "{$processedCount} visitor person(s) processed successfully."
+    );
+}
 }

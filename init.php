@@ -503,6 +503,23 @@ class bazara
                 UNIQUE (`p_id`) ) $charset_collate";
 
             }
+            $tblname = 'bazara_visitor_persons';
+            $wp_track_table = $table_prefix . $tblname;
+            $databaseSchema = $wpdb->dbname;
+            $charset_collate = $wpdb->get_charset_collate();
+
+            if($wpdb->get_var( "show tables like '$wp_track_table'" ) != $wp_track_table)
+            {
+                $sql[] = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}$tblname`
+                ( `v_p_id` INT(11)  NOT NULL auto_increment,
+                `VisitorPersonId` INT(11)   NULL ,
+                `PersonId` int(11)  NULL,
+                `VisitorId` int(11)  NULL,
+                `Deleted` TINYINT(1)  NULL,
+                `RowVersion` BIGINT  NULL,
+                UNIQUE (`v_p_id`) ) $charset_collate";
+
+            }
             $tblname = 'bazara_sub_category';
             $wp_track_table = $table_prefix . $tblname;
 
@@ -826,6 +843,9 @@ class bazara
                 $tblname = 'bazara_regions';
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` BIGINT";
+                $tblname = 'bazara_visitor_persons';
+                $wp_track_table = $table_prefix . $tblname;
+                $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` BIGINT";
                 foreach ($sq as $s)
                     {
                         $wpdb->query( $s );
@@ -884,6 +904,9 @@ class bazara
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` decimal(38,0)";
                 $tblname = 'bazara_regions';
+                $wp_track_table = $table_prefix . $tblname;
+                $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` decimal(38,0)";
+                $tblname = 'bazara_visitor_persons';
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` decimal(38,0)";
                 foreach ($sq as $s)
@@ -954,6 +977,7 @@ class bazara
         $sql[] = "DELETE FROM {$wpdb->prefix}bazara_category";
         $sql[] = "DELETE FROM {$wpdb->prefix}bazara_detail_properties";
         $sql[] = "DELETE FROM {$wpdb->prefix}bazara_persons";
+        $sql[] = "DELETE FROM {$wpdb->prefix}bazara_visitor_persons";
         $sql[] = "DELETE FROM {$wpdb->prefix}bazara_banks";
         $sql[] = "DELETE FROM {$wpdb->prefix}bazara_stores";
         $sql[] = "DELETE FROM {$wpdb->prefix}bazara_sub_category";
@@ -983,6 +1007,7 @@ class bazara
         $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_category";
         $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_detail_properties";
         $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_persons";
+        $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_visitor_persons";
         $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_banks";
         $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_stores";
         $sql[] = "DROP TABLE IF EXISTS {$wpdb->prefix}bazara_sub_category";
@@ -1208,6 +1233,22 @@ class bazara
 			`Deleted` TINYINT(1)  NULL,
 			`RowVersion` INT(11)  NULL,
 			UNIQUE (`v_id`) ) $charset_collate";
+
+        }
+
+        $tblname = 'bazara_visitor_persons';
+        $wp_track_table = $table_prefix . $tblname;
+
+        if($wpdb->get_var( "show tables like '$wp_track_table'" ) != $wp_track_table)
+        {
+            $sql[] = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}$tblname`
+			( `v_p_id` INT(11)  NOT NULL auto_increment,
+			`VisitorPersonId` INT(11)   NULL ,
+			`PersonId` int(11)  NULL,
+			`VisitorId` int(11)  NULL,
+			`Deleted` TINYINT(1)  NULL,
+			`RowVersion` BIGINT  NULL,
+			UNIQUE (`v_p_id`) ) $charset_collate";
 
         }
 
