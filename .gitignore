@@ -1,0 +1,47 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE / Editor
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.buildpath
+.settings/
+
+# Composer
+vendor/
+composer.lock
+
+# NPM (if you add frontend build tools later)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Logs
+*.log
+error_log
+debug.log
+
+# Environment variables (if used)
+.env
+.env.local
+.env.*.local
+
+# Backups and temporary files
+*.bak
+*.swp
+*.tmp
+*~
+*.old
+
+
+#docs
+docs/
