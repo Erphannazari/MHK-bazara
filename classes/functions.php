@@ -973,7 +973,9 @@ function bazara_convert_request_to_options($hasRequest = false)
         'chkLastOrderID'    => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_last_order_id'] ?? '')),
         'customerGroupID'   => sanitize_text_field($_REQUEST['PersonGroup'] ?? ''),
         'variation_date_condition' => sanitize_text_field($_REQUEST['variationDateCondition'] ?? ''),
-        'variationVisibilityType'  => $_REQUEST['variationVisibilityType'] ?? '',
+        'variationVisibilityType'  => isset($_REQUEST['variationVisibilityType']) && is_array($_REQUEST['variationVisibilityType'])
+                        ? $_REQUEST['variationVisibilityType']: []
+            ,
         'StoresSortOrder'   => $_REQUEST['StorePriorityOrders'] ?? [],
         'StorePriorityToggle' => $_REQUEST['bazara_anbar_priority'] ?? '',
         'dateFirstCond'     => $_REQUEST['date_first_select'] ?? '',

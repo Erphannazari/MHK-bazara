@@ -10,7 +10,12 @@ $visibility_variation_toggle = !empty($visitorOption['visibleVariation']) && $vi
 $variation_visibility_type_invisible = !empty($visitorOption['chkVariationVisibility']) && $visitorOption['chkVariationVisibility'] =="invisible";
 $variation_visibility_type_disabled = !empty($visitorOption['chkVariationVisibility']) && $visitorOption['chkVariationVisibility'] =="disable";
 $variation_date_condition = !empty($visitorOption['variation_date_condition']) ? $visitorOption['variation_date_condition'] : 0;
-$selectedInvisibleVariation = !empty($visitorOption['variationVisibilityType']) ? $visitorOption['variationVisibilityType'] : '';
+$hasVariationVisibilityType = array_key_exists('variationVisibilityType', $visitorOption);
+
+$selectedInvisibleVariation = $hasVariationVisibilityType && is_array($visitorOption['variationVisibilityType'])
+    ? $visitorOption['variationVisibilityType']
+    : [];
+    
 $barcode_toggle = !empty($visitorOption['barcode']) && $visitorOption['barcode'];
 $description_toggle = !empty($visitorOption['description']) && $visitorOption['description'];
 $categoryOrGroup_toggle = !empty($visitorOption['chkCategory'] );
@@ -340,11 +345,11 @@ $product_status_radio = !empty($visitorOption['publishStatus']) && $visitorOptio
                         $foundCols = array_values($checkPropertyTypeExist);
                     }
                     ?>
-                    <input class="" type="checkbox" value="invisible"  <?= (bazara_in_array("invisible",$foundCols) || empty($selectedInvisibleVariation)) ? 'checked' : ''?>  name="variationVisibilityType[invisible][<?= $p->PropertyDescriptionId ?>]" >
+                    <input class="" type="checkbox" value="invisible"  <?= (bazara_in_array("invisible", $foundCols) || !$hasVariationVisibilityType) ? 'checked' : '' ?>  name="variationVisibilityType[invisible][<?= $p->PropertyDescriptionId ?>]" >
 
 
                     <label for="email">انتخاب به عنوان متغیر:</label>
-                    <input class="" type="checkbox" <?php if ($p->DataType == BAZARA_PROPERTY_DATE_TYPE){ ?> id="for_variation_date" <?php } ?> value="for_variation"  <?= (bazara_in_array("for_variation",$foundCols) || empty($selectedInvisibleVariation))  ? 'checked' : ''?>  name="variationVisibilityType[for_variation][<?= $p->PropertyDescriptionId ?>]" >
+                    <input class="" type="checkbox" <?php if ($p->DataType == BAZARA_PROPERTY_DATE_TYPE){ ?> id="for_variation_date" <?php } ?> value="for_variation"  <?= (bazara_in_array("for_variation", $foundCols) || !$hasVariationVisibilityType) ? 'checked' : '' ?>  name="variationVisibilityType[for_variation][<?= $p->PropertyDescriptionId ?>]" >
 
 
                     <?php if ($p->DataType == BAZARA_PROPERTY_DATE_TYPE){ ?>
