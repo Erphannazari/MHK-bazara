@@ -7,7 +7,7 @@
 * Author URI: https://www.mahaksoft.com/
 * Text Domain: bazara
 * Domain Path: /languages
-* Version: 3.1048.20
+* Version: 3.1048.21
 * WC requires at least: 5.0.0
 * WC tested up to: 9.4.1
 * Requires at least: 5.8

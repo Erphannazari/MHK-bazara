@@ -2866,7 +2866,6 @@ private function get_all_roles() {
 		}
 
         $completed_date = normalize_datetime_to_gregorian($completed_date);
-        bazara_save_log(date_i18n('Y-m-j'), 'completed date', $completed_date, 'test');
 
         if (!$hpos_enable)
             $order_number = get_post_meta($order_id, '_order_number', true);
