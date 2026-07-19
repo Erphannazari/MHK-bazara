@@ -405,7 +405,7 @@ function get_products_v3($all = false, $min = 0, $max = 10000, $schedule = false
     } else {
         $query = "SELECT * FROM {$wpdb->prefix}bazara_products where Deleted = 0 AND (queue = 0 or queue IS NULL) {$cond2} order by ProductID {$cond} ";
     }
-    
+
     return $wpdb->get_results($query);
 }
 function get_banks()
@@ -684,7 +684,7 @@ add_action('wp_ajax_bazara_check_support_login', 'bazara_check_support_login_aja
 add_action('wp_ajax_nopriv_bazara_save_settings', 'bazara_save_settings');
 add_action('wp_ajax_bazara_save_settings', 'bazara_save_settings');
 
-    // شروع همگام‌سازی تنظیمات دیتابیس
+// شروع همگام‌سازی تنظیمات دیتابیس
 const bazaraOptionsNeedSupportAccess = [
     'chkProduct',
     'chkPicture',
@@ -933,8 +933,8 @@ function bazara_convert_request_to_options($hasRequest = false)
         'carrierMethods'    => sanitize_text_field($_REQUEST['carrierMethods'] ?? ''),
         'chkRegularPrice'   => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_regular_price_toggle'] ?? '')),
         'chkSalePrice'      => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_sale_price_toggle'] ?? '')),
-        'DiscountPriceOrPercent' => (($_REQUEST['discount'] ?? '') == "percent_discount" 
-            ? sanitize_text_field($_REQUEST['btn-percent-discount'] ?? '') 
+        'DiscountPriceOrPercent' => (($_REQUEST['discount'] ?? '') == "percent_discount"
+            ? sanitize_text_field($_REQUEST['btn-percent-discount'] ?? '')
             : sanitize_text_field($_REQUEST['btn-price-discount'] ?? '')),
         'RegularPrice'      => sanitize_text_field($_REQUEST['btn-reg-price'] ?? ''),
         'publishStatus'     => sanitize_text_field($_REQUEST['btn-check-status'] ?? ''),
@@ -1320,10 +1320,10 @@ function create_product($args)
             if (!$notExist && 'variation' === $product->get_type())
                 $product->set_status('publish');
             else
-        if ($notExist && !$SerialProduct)
-                $product->set_status($publishStatus);
-            else
-                $product->set_status($product->get_status());
+                if ($notExist && !$SerialProduct)
+                    $product->set_status($publishStatus);
+                else
+                    $product->set_status($product->get_status());
 
             // رد شدن از متغیر تو در تو (سفارشی‌سازی)
             $attr = $product->get_attributes();
@@ -1389,85 +1389,85 @@ function create_product($args)
 
         if ($args['stockSync'] == 0) {
             if (isset($args['qty']) && ($OptionQuantity || $OptionQuantity == 1) && !$DontUpdateproduct) {
-            $is_variable = $product->get_type() === 'variable';
-            
-            if (!empty($args['vars']) && $SerialProduct) {
-            $data['qty'] = 0;
-            foreach ($args['vars'] as $attr) {
-            if ($attr['deleted'] == 1 || $attr['deleted']) continue;
-            $data['qty'] = $attr['qty'];
-            $args['qty'] += $attr['qty'];
-            $data['detail_id'] = $attr['detail_id'];
-            if ($data['qty'] > 0)
-            $map[] = $data;
-            }
-            $args['manage_stock'] = (int)$args['qty'] > 0;
-            $args['stock_status'] = (int)$args['qty'] > 0 ? 'instock' : 'outofstock';
-            // فقط موجودی محصولات متغیر با SerialProduct تنظیم شود
-            $product->set_stock_quantity($args['qty']);
-            }
-            
-            if (empty($args['vars']) && !$is_variable) {
-            $order_qty = get_order_item_qty($product->get_id(), '_product_id');
-            $order_qty = is_numeric($order_qty) && $order_qty >= 0 ? $order_qty : 0;
-            $bazara_qty = get_bazara_not_converted_qty($args['ProductDetails'][0]);
-            $bazara_qty = is_numeric($bazara_qty) && $bazara_qty >= 0 ? $bazara_qty : 0;
-            $args['qty'] -= $order_qty + $bazara_qty;
-            
-            $args['manage_stock'] = $args['qty'] > 0;
-            $product->set_stock_quantity($args['qty']);
-            $product->set_manage_stock((isset($args['manage_stock']) && $args['qty'] > 0) ? $args['manage_stock'] : false);
-            $product->set_stock_status((isset($args['qty']) && $args['qty'] > 0) ? 'instock' : 'outofstock');
-            }
-            
-            if ($is_variable) {
-            // غیرفعال کردن مدیریت موجودی در سطح محصول والد برای محصولات متغیر
-            $product->set_manage_stock(false);
-            // موجودی برای محصولات متغیر تنظیم نشود
-            $product->set_stock_status('instock');             // به‌صورت پیش‌فرض موجود است، بر اساس ویژگی‌ها تنظیم خواهد شد
-            }
-            
-            if (isset($args['manage_stock']) && $args['manage_stock'] && !$is_variable) {
-            $product->set_stock_status((isset($args['qty']) && $args['qty'] > 0) ? 'instock' : 'outofstock');
-            $product->set_backorders(isset($args['backorders']) ? $args['backorders'] : 'no');
-            }
-            
-            if (class_exists('bazara_ratio_calculator') && !$is_variable)
-            $product->set_weight(number_format($args['qty2'], 2));
-            
-            if (empty($args['vars']))
-            update_schedule_sync($args['ProductId'], 'stockSync');
-            if (class_exists('WooCommerce_Role_Based_Price_Product_Pricing'))
-            delete_product_wcrb_transient($product_id);
-            
-            if ($args['qty'] <= 0 || $is_variable) {
-            if (class_exists('bazara_manage_quantity') && $args['qty'] <= 0) {
-            $product->set_stock_quantity(0);
-            $product->set_manage_stock(true);
-            $product->set_stock_status('instock');
-            } else {
-            // بررسی اینکه آیا محصول متغیر است و آیا ویژگی موجودی دارد
-            $all_variations_outofstock = true;
-            
-            if ($is_variable) {
-            $variations = wc_get_products([
-            'type' => 'variation',
-            'parent' => $product->get_id(),
-            'stock_status' => 'instock',
-            'limit' => 1,
-            ]);
-            $all_variations_outofstock = empty($variations);
-            }
-            
-            // اگر محصول ساده با تعداد <= 0 باشد یا تمام ویژگی‌ها ناموجود باشند، به‌عنوان ناموجود علامت‌گذاری شود
-            if ((!$is_variable && $args['qty'] <= 0) || ($is_variable && $all_variations_outofstock)) {
-            product_out_of_Stock($product->get_id());
-            }
-            }
-            }
+                $is_variable = $product->get_type() === 'variable';
+
+                if (!empty($args['vars']) && $SerialProduct) {
+                    $data['qty'] = 0;
+                    foreach ($args['vars'] as $attr) {
+                        if ($attr['deleted'] == 1 || $attr['deleted']) continue;
+                        $data['qty'] = $attr['qty'];
+                        $args['qty'] += $attr['qty'];
+                        $data['detail_id'] = $attr['detail_id'];
+                        if ($data['qty'] > 0)
+                            $map[] = $data;
+                    }
+                    $args['manage_stock'] = (int)$args['qty'] > 0;
+                    $args['stock_status'] = (int)$args['qty'] > 0 ? 'instock' : 'outofstock';
+                    // فقط موجودی محصولات متغیر با SerialProduct تنظیم شود
+                    $product->set_stock_quantity($args['qty']);
+                }
+
+                if (empty($args['vars']) && !$is_variable) {
+                    $order_qty = get_order_item_qty($product->get_id(), '_product_id');
+                    $order_qty = is_numeric($order_qty) && $order_qty >= 0 ? $order_qty : 0;
+                    $bazara_qty = get_bazara_not_converted_qty($args['ProductDetails'][0]);
+                    $bazara_qty = is_numeric($bazara_qty) && $bazara_qty >= 0 ? $bazara_qty : 0;
+                    $args['qty'] -= $order_qty + $bazara_qty;
+
+                    $args['manage_stock'] = $args['qty'] > 0;
+                    $product->set_stock_quantity($args['qty']);
+                    $product->set_manage_stock((isset($args['manage_stock']) && $args['qty'] > 0) ? $args['manage_stock'] : false);
+                    $product->set_stock_status((isset($args['qty']) && $args['qty'] > 0) ? 'instock' : 'outofstock');
+                }
+
+                if ($is_variable) {
+                    // غیرفعال کردن مدیریت موجودی در سطح محصول والد برای محصولات متغیر
+                    $product->set_manage_stock(false);
+                    // موجودی برای محصولات متغیر تنظیم نشود
+                    $product->set_stock_status('instock');             // به‌صورت پیش‌فرض موجود است، بر اساس ویژگی‌ها تنظیم خواهد شد
+                }
+
+                if (isset($args['manage_stock']) && $args['manage_stock'] && !$is_variable) {
+                    $product->set_stock_status((isset($args['qty']) && $args['qty'] > 0) ? 'instock' : 'outofstock');
+                    $product->set_backorders(isset($args['backorders']) ? $args['backorders'] : 'no');
+                }
+
+                if (class_exists('bazara_ratio_calculator') && !$is_variable)
+                    $product->set_weight(number_format($args['qty2'], 2));
+
+                if (empty($args['vars']))
+                    update_schedule_sync($args['ProductId'], 'stockSync');
+                if (class_exists('WooCommerce_Role_Based_Price_Product_Pricing'))
+                    delete_product_wcrb_transient($product_id);
+
+                if ($args['qty'] <= 0 || $is_variable) {
+                    if (class_exists('bazara_manage_quantity') && $args['qty'] <= 0) {
+                        $product->set_stock_quantity(0);
+                        $product->set_manage_stock(true);
+                        $product->set_stock_status('instock');
+                    } else {
+                        // بررسی اینکه آیا محصول متغیر است و آیا ویژگی موجودی دارد
+                        $all_variations_outofstock = true;
+
+                        if ($is_variable) {
+                            $variations = wc_get_products([
+                                'type' => 'variation',
+                                'parent' => $product->get_id(),
+                                'stock_status' => 'instock',
+                                'limit' => 1,
+                            ]);
+                            $all_variations_outofstock = empty($variations);
+                        }
+
+                        // اگر محصول ساده با تعداد <= 0 باشد یا تمام ویژگی‌ها ناموجود باشند، به‌عنوان ناموجود علامت‌گذاری شود
+                        if ((!$is_variable && $args['qty'] <= 0) || ($is_variable && $all_variations_outofstock)) {
+                            product_out_of_Stock($product->get_id());
+                        }
+                    }
+                }
             } else
-            update_schedule_sync($args['ProductId'], 'stockSync');
-            }
+                update_schedule_sync($args['ProductId'], 'stockSync');
+        }
         if ($args['detailSync'] == 0) {
             if (!empty($args['vars'])) {
                 $selectedInvisibleVariation = !empty($options['variationVisibilityType']) ? ($options['variationVisibilityType']) : '';
@@ -1864,37 +1864,37 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
         }
         update_schedule_sync($productArgs['ProductId'], 'detailSync', 1, 'bazara_products', 'ProductID');
     }
-        // قیمت‌ها
+    // قیمت‌ها
     if ($productArgs['stockSync'] == 0) {
         if ($OptionQuantity && !$DontUpdateproduct) {
-        $order_qty = get_order_item_qty($variation->get_id(), '_variation_id');
-        $order_qty = is_numeric($order_qty) && $order_qty >= 0 ? $order_qty : 0;
-        $bazara_qty = get_bazara_not_converted_qty($args['detail_id']);
-        $bazara_qty = is_numeric($bazara_qty) && $bazara_qty >= 0 ? $bazara_qty : 0;
-        $args['qty'] -= $order_qty + $bazara_qty;
-        
-        $args['manage_stock'] = $args['qty'] > 0;
-        
-        $qty = $args['qty'];
-        if ($qty <= 0)
-        {
-            if (class_exists("bazara_manage_quantity")){
-                $variation->set_stock_quantity(0);
+            $order_qty = get_order_item_qty($variation->get_id(), '_variation_id');
+            $order_qty = is_numeric($order_qty) && $order_qty >= 0 ? $order_qty : 0;
+            $bazara_qty = get_bazara_not_converted_qty($args['detail_id']);
+            $bazara_qty = is_numeric($bazara_qty) && $bazara_qty >= 0 ? $bazara_qty : 0;
+            $args['qty'] -= $order_qty + $bazara_qty;
+
+            $args['manage_stock'] = $args['qty'] > 0;
+
+            $qty = $args['qty'];
+            if ($qty <= 0)
+            {
+                if (class_exists("bazara_manage_quantity")){
+                    $variation->set_stock_quantity(0);
+                    $variation->set_manage_stock(true);
+                    $variation->set_stock_status('instock');
+                }else{
+                    $variation->set_manage_stock(false);
+                    product_out_of_Stock($variation->get_id());
+                }
+            } else {
+                $variation->set_stock_quantity($args['qty']);
                 $variation->set_manage_stock(true);
                 $variation->set_stock_status('instock');
-            }else{
-                $variation->set_manage_stock(false);
-                product_out_of_Stock($variation->get_id());
             }
-        } else {
-        $variation->set_stock_quantity($args['qty']);
-        $variation->set_manage_stock(true);
-        $variation->set_stock_status('instock');
+
+            update_schedule_sync($productArgs['ProductId'], 'stockSync', 1, 'bazara_products', 'ProductID');
         }
-        
-        update_schedule_sync($productArgs['ProductId'], 'stockSync', 1, 'bazara_products', 'ProductID');
-        }
-        }
+    }
     if ($productArgs['priceSync'] == 0) {
 
         if ($OptionPrice && !class_exists('bazara_ratio_calculator')) {
@@ -2095,34 +2095,34 @@ function delete_product_wcrb_transient($productID)
     global $wpdb;
     $wpdb->query("Delete FROM {$wpdb->prefix}options WHERE option_name LIKE '\_transient%\__wcrbp\__p_{$productID}_%'");
 }
-    //todo : تبدیل به خصوصی کن
+//todo : تبدیل به خصوصی کن
 function product_out_of_Stock($product_id)
 {
-$out_of_stock_status = 'outofstock';
+    $out_of_stock_status = 'outofstock';
 
     // ۱. به‌روزرسانی تعداد موجودی
-$stock_updated = update_post_meta($product_id, '_stock', 0);
-if ($stock_updated === false) {
-error_log("Failed to update _stock meta for product ID $product_id");
-}
+    $stock_updated = update_post_meta($product_id, '_stock', 0);
+    if ($stock_updated === false) {
+        error_log("Failed to update _stock meta for product ID $product_id");
+    }
 
     // ۲. به‌روزرسانی وضعیت موجودی
-$status_updated = update_post_meta($product_id, '_stock_status', wc_clean($out_of_stock_status));
-if ($status_updated === false) {
-error_log("Failed to update _stock_status meta for product ID $product_id");
-}
+    $status_updated = update_post_meta($product_id, '_stock_status', wc_clean($out_of_stock_status));
+    if ($status_updated === false) {
+        error_log("Failed to update _stock_status meta for product ID $product_id");
+    }
 
     // ۳. به‌روزرسانی رابطه برچسب پست
-$terms_updated = wp_set_post_terms($product_id, 'outofstock', 'product_visibility', true);
-if (is_wp_error($terms_updated)) {
-error_log("Failed to update product_visibility term for product ID $product_id: " . $terms_updated->get_error_message());
-}
+    $terms_updated = wp_set_post_terms($product_id, 'outofstock', 'product_visibility', true);
+    if (is_wp_error($terms_updated)) {
+        error_log("Failed to update product_visibility term for product ID $product_id: " . $terms_updated->get_error_message());
+    }
 
     // ۴. پاک‌سازی/بازسازی کش ویژگی‌ها
-wc_delete_product_transients($product_id);
+    wc_delete_product_transients($product_id);
 }
 
-    // تابع کمکی که نمونه صحیح شیء محصول را برمی‌گرداند
+// تابع کمکی که نمونه صحیح شیء محصول را برمی‌گرداند
 function wc_get_product_object_type($type, $sku, $publishStatus = 'draft')
 {
     // دریافت نمونه شیء WC_Product (بسته به نوع آن)
@@ -2181,13 +2181,13 @@ function get_product_by_mahakID($mahak_product_id)
 function get_product_variation($variation_id, $detailID)
 {
     global $wpdb;
-    
+
     if (empty($detailID)) {
         return null;
     }
-    
+
     $detailID = absint($detailID);
-    
+
     // جستجوی اول: هم detailID هم prop_id (variation_id) - دقیق‌تر و سریع‌تر
     if (!empty($variation_id)) {
         $variation_id = absint($variation_id);
@@ -2220,7 +2220,7 @@ function get_product_variation($variation_id, $detailID)
             $detailID
         );
     }
-    
+
     $results = $wpdb->get_results($query);
 
     // جستجوی دوم (فقط با detailID): اگر جستجوی اول نتیجه‌ای نداشت
@@ -2237,31 +2237,31 @@ function get_product_variation($variation_id, $detailID)
             $detailID
         );
     }
-    
+
     $results = $wpdb->get_results($query);
-    
+
     // مدیریت عدم وجود نتیجه
     if (empty($results)) {
         return null;
     }
-    
+
     // مدیریت موارد تکراری: بررسی تصاویر و نگه‌داشتن بهترین
     if (count($results) > 1) {
         $variations_with_images = array();
         $variations_without_images = array();
-        
+
         // بررسی هر ویژگی برای وجود تصویر
         foreach ($results as $row) {
             $variation_obj = wc_get_product($row->ID);
-            
+
             if (!$variation_obj || !$variation_obj->is_type('variation')) {
                 continue;
             }
-            
+
             // بررسی اینکه آیا ویژگی تصویر دارد
             $image_id = $variation_obj->get_image_id();
             $has_image = !empty($image_id) && wp_attachment_is_image($image_id);
-            
+
             if ($has_image) {
                 $variations_with_images[] = array(
                     'ID' => $row->ID,
@@ -2276,11 +2276,11 @@ function get_product_variation($variation_id, $detailID)
                 );
             }
         }
-        
+
         // تعیین اینکه کدام ویژگی نگه داشته شود
         $keep_variation = null;
         $duplicate_ids_to_delete = array();
-        
+
         // بررسی اطمینان: اگر ویژگی معتبری یافت نشد، null برگردان
         if (empty($variations_with_images) && empty($variations_without_images)) {
             error_log(sprintf(
@@ -2289,7 +2289,7 @@ function get_product_variation($variation_id, $detailID)
             ));
             return null;
         }
-        
+
         if (!empty($variations_with_images)) {
             // نگه‌داشتن اولین ویژگی با تصویر (از قبل بر اساس تاریخ نزولی مرتب شده، پس جدیدترین اول)
             $keep_variation = $variations_with_images[0];
@@ -2327,12 +2327,12 @@ function get_product_variation($variation_id, $detailID)
                 }
             }
         }
-        
+
         // ثبت لاگ تشخیص تکراری‌ها و پاک‌سازی
         $all_duplicate_ids = array_map(function($row) {
             return $row->ID;
         }, $results);
-        
+
         error_log(sprintf(
             'Bazara: Duplicate product variations detected for detailID %d. Found %d variations with IDs: %s. Keeping ID: %d. Deleting IDs: %s',
             $detailID,
@@ -2341,7 +2341,7 @@ function get_product_variation($variation_id, $detailID)
             $keep_variation['ID'],
             implode(', ', $duplicate_ids_to_delete)
         ));
-        
+
         // حذف ویژگی‌های تکراری
         foreach ($duplicate_ids_to_delete as $duplicate_id) {
             $duplicate_product = wc_get_product($duplicate_id);
@@ -2356,7 +2356,7 @@ function get_product_variation($variation_id, $detailID)
                 ));
             }
         }
-        
+
         // استفاده از ویژگی نگه‌داشته‌شده
         $variation_post_id = $keep_variation['ID'];
         $product = $keep_variation['product'];
@@ -2365,18 +2365,18 @@ function get_product_variation($variation_id, $detailID)
         $variation_post_id = $results[0]->ID;
         $product = null; // بعداً بارگذاری خواهد شد
     }
-    
+
     // پاک‌سازی کش برای جلوگیری از نتایج قدیمی
     clean_post_cache($variation_post_id);
-    
+
     // پاک‌سازی کش محصولات ووکامرس نیز
     wc_delete_product_transients($variation_post_id);
-    
+
     // دریافت شیء محصول اگر قبلاً بارگذاری نشده (در حالت تکراری، قبلاً بارگذاری شده)
     if (!isset($product) || is_null($product)) {
         $product = wc_get_product($variation_post_id);
     }
-    
+
     // بررسی اطمینان اضافی: تأیید معتبر بودن محصول و ویژگی بودن آن
     if (!$product || !$product->is_type('variation')) {
         error_log(sprintf(
@@ -2386,7 +2386,7 @@ function get_product_variation($variation_id, $detailID)
         ));
         return null;
     }
-    
+
     return $product;
 }
 /**
@@ -2402,90 +2402,90 @@ function get_product_variation($variation_id, $detailID)
  */
 function bz_cleanup_variations_marked_deleted($limit = 200)
 {
-	global $wpdb;
+    global $wpdb;
 
-	$limit = absint($limit);
-	if ($limit <= 0) {
-		$limit = 200;
-	}
+    $limit = absint($limit);
+    if ($limit <= 0) {
+        $limit = 200;
+    }
 
-	$table = $wpdb->prefix . 'bazara_product_details';
+    $table = $wpdb->prefix . 'bazara_product_details';
 
     // دریافت شناسه‌های ProductDetailId یکتا که حذف شده علامت‌گذاری شده‌اند
-	$productDetailIds = $wpdb->get_col(
-		$wpdb->prepare(
-			"SELECT DISTINCT ProductDetailId
+    $productDetailIds = $wpdb->get_col(
+        $wpdb->prepare(
+            "SELECT DISTINCT ProductDetailId
 			 FROM {$table}
 			 WHERE Deleted = %d
 			 LIMIT %d",
-			1,
-			$limit
-		)
-	);
+            1,
+            $limit
+        )
+    );
 
-	if (empty($productDetailIds)) {
-		return array(
-			'processed' => 0,
-			'deleted_variations' => array(),
-			'message' => 'No deleted ProductDetailId records found.'
-		);
-	}
+    if (empty($productDetailIds)) {
+        return array(
+            'processed' => 0,
+            'deleted_variations' => array(),
+            'message' => 'No deleted ProductDetailId records found.'
+        );
+    }
 
-	$deletedVariationIds = array();
+    $deletedVariationIds = array();
 
     // آماده‌سازی و استفاده مجدد از SQL برای یافتن ویژگی‌ها بر اساس ProductDetailId
-	foreach ($productDetailIds as $detailId) {
-		$detailId = absint($detailId);
-		if ($detailId <= 0) {
-			continue;
-		}
+    foreach ($productDetailIds as $detailId) {
+        $detailId = absint($detailId);
+        if ($detailId <= 0) {
+            continue;
+        }
 
-		$variationIds = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT p.ID
+        $variationIds = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT p.ID
 				 FROM {$wpdb->posts} p
 				 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
 				 WHERE p.post_type = 'product_variation'
 				   AND p.post_status != 'trash'
 				   AND pm.meta_key = 'mahak_product_detail_id'
 				   AND pm.meta_value = %s",
-				$detailId
-			)
-		);
+                $detailId
+            )
+        );
 
-		if (empty($variationIds)) {
-			continue;
-		}
+        if (empty($variationIds)) {
+            continue;
+        }
 
-		error_log(sprintf(
-			'Bazara: Deleting %d duplicate/obsolete variations for deleted ProductDetailId %d. Variation IDs: %s',
-			count($variationIds),
-			$detailId,
-			implode(', ', $variationIds)
-		));
+        error_log(sprintf(
+            'Bazara: Deleting %d duplicate/obsolete variations for deleted ProductDetailId %d. Variation IDs: %s',
+            count($variationIds),
+            $detailId,
+            implode(', ', $variationIds)
+        ));
 
-		foreach ($variationIds as $varId) {
-			$varId = absint($varId);
-			if ($varId <= 0) {
-				continue;
-			}
+        foreach ($variationIds as $varId) {
+            $varId = absint($varId);
+            if ($varId <= 0) {
+                continue;
+            }
 
-			$variation = wc_get_product($varId);
-			if ($variation && $variation->is_type('variation')) {
-				$variation->delete(true);         // حذف اجباری
-				clean_post_cache($varId);
-				wc_delete_product_transients($varId);
-				$deletedVariationIds[] = $varId;
-				error_log(sprintf('Bazara: Variation ID %d deleted for ProductDetailId %d', $varId, $detailId));
-			}
-		}
-	}
+            $variation = wc_get_product($varId);
+            if ($variation && $variation->is_type('variation')) {
+                $variation->delete(true);         // حذف اجباری
+                clean_post_cache($varId);
+                wc_delete_product_transients($varId);
+                $deletedVariationIds[] = $varId;
+                error_log(sprintf('Bazara: Variation ID %d deleted for ProductDetailId %d', $varId, $detailId));
+            }
+        }
+    }
 
-	return array(
-		'processed' => count($productDetailIds),
-		'deleted_variations' => $deletedVariationIds,
-		'message' => 'Cleanup complete.'
-	);
+    return array(
+        'processed' => count($productDetailIds),
+        'deleted_variations' => $deletedVariationIds,
+        'message' => 'Cleanup complete.'
+    );
 }
 
 /**
@@ -3118,8 +3118,8 @@ function bazara_run_product_synchronize()
         }
 
         bz_cleanup_duplicate_variations_from_report();
-        
-        
+
+
 
         if (get_product_cnt() > 0) {
             if ($syncCategory)
@@ -3249,11 +3249,11 @@ function get_orders_hpos($orderID = 32220)
 function get_left_behind_orders($max_id)
 {
     global $wpdb;
-    
+
     if (empty($max_id) || $max_id <= 0) {
         return array();
     }
-    
+
     $query = $wpdb->prepare("
         SELECT posts.ID
         FROM  `{$wpdb->posts}` AS posts 
@@ -3275,12 +3275,12 @@ function get_left_behind_orders($max_id)
 function get_left_behind_orders_hpos($max_id)
 {
     global $wpdb;
-    
+
     // اگر max_id معتبر نباشد، هیچ سفارش جا‌مانده‌ای وجود ندارد
     if (empty($max_id) || $max_id <= 0) {
         return array();
     }
-    
+
     $table_order_item = "{$wpdb->prefix}wc_orders";
     $query = $wpdb->prepare("
         SELECT p.id 
@@ -3299,11 +3299,11 @@ function get_left_behind_orders_hpos($max_id)
 function get_left_behind_orders_from_limit($sync_limit, $max_id)
 {
     global $wpdb;
-    
+
     if (empty($sync_limit) || $sync_limit <= 0 || empty($max_id) || $max_id <= 0 || $sync_limit >= $max_id) {
         return array();
     }
-    
+
     $query = $wpdb->prepare("
         SELECT posts.ID
         FROM  `{$wpdb->posts}` AS posts 
@@ -3326,12 +3326,12 @@ function get_left_behind_orders_from_limit($sync_limit, $max_id)
 function get_left_behind_orders_from_limit_hpos($sync_limit, $max_id)
 {
     global $wpdb;
-    
+
     // اگر sync_limit یا max_id معتبر نباشند، هیچ سفارش جا‌مانده‌ای وجود ندارد
     if (empty($sync_limit) || $sync_limit <= 0 || empty($max_id) || $max_id <= 0 || $sync_limit >= $max_id) {
         return array();
     }
-    
+
     $table_order_item = "{$wpdb->prefix}wc_orders";
     $query = $wpdb->prepare("
         SELECT p.id 
