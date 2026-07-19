@@ -3984,12 +3984,21 @@ private function get_all_roles() {
                 if ($index <= $min) continue;
                 if ($index > $max) break;
 
-                $pricesList = $Discounts = [];
+                $pricesList = [];
+                $Discounts = [];
+
                 for ($i = 1; $i <= 10; $i++) {
-                    if (!empty($productdetail["Price{$i}"]));
-                    $pricesList[$i]["Price{$i}"] = $productdetail["Price{$i}"];
-                    if (isset($productdetail["Discount{$i}"]) && !empty($productdetail["Discount{$i}"]));
-                    $Discounts[$i]["Discount{$i}"] = $productdetail["Discount{$i}"];
+
+                    $priceKey = "Price{$i}";
+                    $discountKey = "Discount{$i}";
+
+                    if (isset($productdetail[$priceKey])) {
+                        $pricesList[$i][$priceKey] = $productdetail[$priceKey];
+                    }
+
+                    if (isset($productdetail[$discountKey])) {
+                        $Discounts[$i][$discountKey] = $productdetail[$discountKey];
+                    }
                 }
 
                 $product_items = array(
