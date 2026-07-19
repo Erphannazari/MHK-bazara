@@ -1370,8 +1370,20 @@ function create_product($args)
 
             //Skip from nested variable (Customization)
             $attr = $product->get_attributes();
-            if(is_object($attr[array_key_first($attr)]) && get_class($attr[array_key_first($attr)]) === 'stdClass'){
-                return array('success' => false, 'message' => 'کالای دارای جزئیات نمیتواند بعنوان متغییر یک محصول متغییر همگام سازی شود.');
+
+            if (!empty($attr)) {
+                $first_key = array_key_first($attr);
+
+                if (
+                    isset($attr[$first_key]) &&
+                    is_object($attr[$first_key]) &&
+                    get_class($attr[$first_key]) === 'stdClass'
+                ) {
+                    return array(
+                        'success' => false,
+                        'message' => 'کالای دارای جزئیات نمیتواند بعنوان متغییر یک محصول متغییر همگام سازی شود.'
+                    );
+                }
             }
 
             //Attribute has null or empty options (Customization)
