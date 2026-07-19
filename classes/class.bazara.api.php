@@ -75,7 +75,34 @@ class BazaraApi
     
         // 2) درخواست از API
         $response = $this->http_post($this->getAll, $input, $token);
-        $decoded  = json_decode($response, true);
+
+        if (!is_string($response) || trim($response) === '') {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'API returned empty or invalid response',
+                'Error',
+                print_r($response, true)
+            );
+
+            return array(
+                'success' => false,
+                'message' => 'Empty API response'
+            );
+        }
+
+        $decoded = json_decode($response, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'JSON Decode Failed',
+                'Error',
+                json_last_error_msg() . "\nResponse:\n" . $response
+            );
+
+            return array(
+                'success' => false,
+                'message' => 'Invalid JSON response'
+            );
+        }
     
         // 3) بررسی معتبر بودن JSON
         if (!is_array($decoded)) {
