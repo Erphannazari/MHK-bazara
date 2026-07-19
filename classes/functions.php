@@ -2184,22 +2184,13 @@ function product_out_of_Stock($product_id)
 $out_of_stock_status = 'outofstock';
 
 // 1. Updating the stock quantity
-$stock_updated = update_post_meta($product_id, '_stock', 0);
-if ($stock_updated === false) {
-error_log("Failed to update _stock meta for product ID $product_id");
-}
+update_post_meta($product_id, '_stock', 0);
 
 // 2. Updating the stock status
-$status_updated = update_post_meta($product_id, '_stock_status', wc_clean($out_of_stock_status));
-if ($status_updated === false) {
-error_log("Failed to update _stock_status meta for product ID $product_id");
-}
+update_post_meta($product_id, '_stock_status', wc_clean($out_of_stock_status));
 
 // 3. Updating post term relationship
-$terms_updated = wp_set_post_terms($product_id, 'outofstock', 'product_visibility', true);
-if (is_wp_error($terms_updated)) {
-error_log("Failed to update product_visibility term for product ID $product_id: " . $terms_updated->get_error_message());
-}
+wp_set_post_terms($product_id, 'outofstock', 'product_visibility', true);
 
 // 4. Clear/refresh the variation cache
 wc_delete_product_transients($product_id);
