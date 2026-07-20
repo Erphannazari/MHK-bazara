@@ -9,7 +9,7 @@ if (! defined('ABSPATH')) {
 function bazara_options_default()
 {
 
-    return array(
+    return [
         'username' => '',
         'password'   => '',
         'systemSyncID'   => '',
@@ -18,31 +18,31 @@ function bazara_options_default()
         'refresh_interval' => 5,
         'publishStatus' => 'publish',
         'databaseVersion' => 0
-    );
+    ];
 }
 function bazara_options_visitor()
 {
 
-    return array(
+    return [
         'StoreCode' => 0,
         'CashCode'   => 0,
         'BankCode'   => 0,
         'VisitorId'   => 0
-    );
+    ];
 }
 function bazara_taxonomy_term()
 {
 
 
-    return array(
+    return [
         'id'         => ''
-    );
+    ];
 }
 function bazara_settings_visitor()
 {
 
 
-    return array(
+    return [
         'chkProduct'         => true,
         'chkCustomer'        => true,
         'chkPicture'         => true,
@@ -59,21 +59,21 @@ function bazara_settings_visitor()
         'selectCurrencyPlugin'   => 'toman',
         'selectRegularPrice'   => 1,
         'selectPrice'        => 1,
-    );
+    ];
 }
 function bazara_visitor_soft_settings()
 {
 
 
-    return array(
+    return [
         'SettingCode'         => ''
 
-    );
+    ];
 }
 function bazara_latest_versions()
 {
 
-    return array(
+    return [
         'product' => 0,
         'price'   => 0,
         'picture'   => 0,
@@ -87,7 +87,7 @@ function bazara_latest_versions()
         'Regions'   => 0,
         'VisitorProducts'   => 0,
         'CronProcessing'   => 0,
-    );
+    ];
 }
 // پاکسازی خودکار عملیات‌های اکشن‌اسکیولر که بیش از 2 دقیقه در وضعیت in-progress گیر کرده‌اند
 add_action('init', 'delete_action_scheduler', 10);
@@ -102,7 +102,7 @@ function delete_action_scheduler()
  * الگوی Upsert: اگر ردیف با $field=$value وجود داشت آپدیت کن، وگرنه اینسرت کن.
  * برای جدول bazara_products فلگ 'new'=1 تنظیم می‌شود.
  */
-function insert($table = 'bazara_products', $arr = array(), $field = '', $value = '')
+function insert($table = 'bazara_products', $arr = [], $field = '', $value = '')
 {
     global  $wpdb;
     $query = "SELECT * FROM {$wpdb->prefix}$table WHERE $field= '$value' ";
@@ -112,7 +112,7 @@ function insert($table = 'bazara_products', $arr = array(), $field = '', $value 
             $arr['new'] = 1;
         return $wpdb->insert($wpdb->prefix . $table, $arr);
     } else {
-        return $wpdb->update($wpdb->prefix . $table, $arr, array($field => $value));
+        return $wpdb->update($wpdb->prefix . $table, $arr, [$field => $value]);
     }
 }
 // گرفتن دسته‌بندی‌های محصولات از جدول bazara_category
@@ -679,18 +679,18 @@ function bazara_save_log($date, $title, $comment, $is_success)
     global $wpdb;
     $wpdb->insert(
         "{$wpdb->prefix}bazara_logs",
-        array(
+        [
             'log_date' => $date,
             'log_title' => $title,
             'log_comment' => $comment,
             'is_success' => $is_success,
-        ),
-        array(
+        ],
+        [
             '%s',
             '%s',
             '%s',
             '%d'
-        )
+        ]
     );
 }
 
@@ -714,7 +714,7 @@ function bazara_get_sync_percentage()
     global  $wpdb;
     $all =  $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}bazara_products where NOT (IsSync = 1 and queue = 1)"));
     $Sync =  $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}bazara_products where NOT (IsSync = 1 and queue = 1) and IsSync = 1"));
-    wp_send_json(array('all' => $all, 'sync' => $Sync));
+    wp_send_json(['all' => $all, 'sync' => $Sync]);
 }
 add_action('wp_ajax_bazara_check_user_access', 'bazara_check_user_access_ajax');
 add_action('wp_ajax_bazara_check_support_login', 'bazara_check_support_login_ajax');
@@ -770,11 +770,11 @@ function bazara_check_support_login_ajax()
         ];
         $response = wp_remote_request(
             $url,
-            array(
+            [
                 'method' => 'POST',
                 'body' => $data,
                 'timeout' => 120
-            )
+            ]
         );
         $res = $response['body'] ? json_decode($response['body']) : false;
 
@@ -970,7 +970,7 @@ function bazara_save_settings()
     }
 
     $message = "تنظیمات با موفقیت ثبت شد.";
-    wp_send_json(array('result' => $message));
+    wp_send_json(['result' => $message]);
 }
 function bazara_get_seo_message($options)
 {
@@ -994,7 +994,7 @@ function bazara_convert_request_to_options($hasRequest = false)
 
     $visitor_settings = get_option('bazara_visitor_settings', []);
 
-    $options = array(
+    $options = [
         'chkProduct'        => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_sync_product_toggle'] ?? '')),
         'chkPicture'        => toggle_to_boolean(sanitize_text_field($_REQUEST['chkUploadPics'] ?? '')),
         'chkTitle'          => toggle_to_boolean(sanitize_text_field($_REQUEST['chkTitle'] ?? '')),
@@ -1050,7 +1050,7 @@ function bazara_convert_request_to_options($hasRequest = false)
         'bazara_regular_multiprice_role_cheque'    => $_REQUEST['bazara_regular_multiprice_role_cheque'] ?? '',
         'bazara_regular_multiprice_discount_price_select' => $_REQUEST['bazara_regular_multiprice_discount_price_select'] ?? '',
         'bazara_regular_multiprice_role_discount'  => $_REQUEST['bazara_regular_multiprice_role_discount'] ?? '',
-    );
+    ];
 
     return $options;
 }
@@ -1078,7 +1078,7 @@ function bazara_save_visitor_setting()
     $options = get_option('bazara_options');
 
     $active_sync = toggle_to_boolean(sanitize_text_field($_REQUEST['active_auto_sync']));
-    $options = array(
+    $options = [
         'username'                 => (sanitize_text_field($_REQUEST['username'])),
         'password'                          => (sanitize_text_field($_REQUEST['password'])),
         'refresh_interval'                  => sanitize_text_field($_REQUEST['refresh_interval']),
@@ -1086,7 +1086,7 @@ function bazara_save_visitor_setting()
         'publishStatus' => isset($_REQUEST['publishStatus']) ? sanitize_text_field($_REQUEST['publishStatus']) : '',
         'databaseVersion'                  => $options['databaseVersion'],
 
-    );
+    ];
     if (!$active_sync)
         $options['refresh_interval'] = 0;
 
@@ -1098,7 +1098,7 @@ function bazara_save_visitor_setting()
 
     if (!empty($validToken) && $validToken['success'] == false) {
         $message = $validToken['message'];
-        wp_send_json(array('status' => false, 'result' => $message));
+        wp_send_json(['status' => false, 'result' => $message]);
     }
     $options['site_name'] = $validToken['object']['UserTitle'];
     $options['DatabaseId'] = $validToken['object']['DatabaseId'];
@@ -1111,7 +1111,7 @@ function bazara_save_visitor_setting()
     if (($savedVisitor != $lastVisitor)) {
         $message = "در این سایت قبلا با اطلاعات دیگری همگام سازی انجام شده،در صورت تایید کلیه کالاهای محکی قبلی حذف و یا آپدیت خواهند شد.مطمئن هستید؟";
         $bazara->set_visitor_options(null, $savedVisitor);
-        wp_send_json(array('status' => 2, 'result' => $message, 'data' => $validToken['object']));
+        wp_send_json(['status' => 2, 'result' => $message, 'data' => $validToken['object']]);
     }
 
 
@@ -1124,7 +1124,7 @@ function bazara_save_visitor_setting()
     else
         bazara_clear_cron();
 
-    wp_send_json(array('status' => 1, 'result' => "تنظیمات با موفقیت ذخیره شد", 'data' => $validToken['object']));
+    wp_send_json(['status' => 1, 'result' => "تنظیمات با موفقیت ذخیره شد", 'data' => $validToken['object']]);
 }
 add_action('bazara_run_product_sync', 'bazara_run_product_synchronize');
 add_action('bazara_run_clean_queue', 'clear_tables_queue');
@@ -1217,7 +1217,7 @@ function bazara_change_visitor_ajax()
     change_visitor();
 
     $message = "تغییرات با موفقیت انجام شد";
-    wp_send_json(array('status' => true, 'result' => $message));
+    wp_send_json(['status' => true, 'result' => $message]);
 }
 function uploadMedia($image_url, $filename)
 {
@@ -1227,13 +1227,13 @@ function uploadMedia($image_url, $filename)
     $media = media_sideload_image($image_url, 0, $filename);
     if (is_wp_error($media))
         return $media;
-    $attachments = get_posts(array(
+    $attachments = get_posts([
         'post_type' => 'attachment',
         'post_status' => null,
         'post_parent' => 0,
         'orderby' => 'post_date',
         'order' => 'DESC'
-    ));
+    ]);
     return $attachments[0]->ID;
 }
 
@@ -1246,15 +1246,15 @@ function mahak_upload_media($url, $filename)
 
     if (!is_wp_error($temp_file)) {
         // آرایه بر اساس $_FILE همانطور که در آپلود فایل PHP دیده می‌شود
-        $file = array(
+        $file = [
             'name'     => strtotime("now") . $filename, // مثال: wp-header-logo.png
             'type'     => 'image/jpg',
             'tmp_name' => $temp_file,
             'error'    => 0,
             'size'     => filesize($temp_file),
-        );
+        ];
 
-        $overrides = array('test_form' => false, 'test_size' => true);
+        $overrides = ['test_form' => false, 'test_size' => true];
 
         // انتقال فایل موقت به پوشه آپلودها
         $results = wp_handle_sideload($file, $overrides);
@@ -1266,12 +1266,12 @@ function mahak_upload_media($url, $filename)
             $local_url = $results['url'];  // آدرس URL فایل در پوشه آپلودها
             $type      = $results['type']; // نوع MIME فایل
 
-            $attachment = array(
+            $attachment = [
                 'post_mime_type' => $type,
                 'post_title' => $filename,
                 'post_content' => '',
                 'post_status' => 'inherit'
-            );
+            ];
             $attach_id = wp_insert_attachment($attachment, $filename);
             $imagenew = get_post($attach_id);
             $fullsizepath = get_attached_file($imagenew->ID);
@@ -1359,14 +1359,14 @@ function create_product($args)
             update_product_queue($args['ProductId'], 0);
 
             if (!empty($product) && 'variation' !== $product->get_type()) {
-                wp_update_post(array(
+                wp_update_post([
                     'ID' => $product->get_id(),
                     'post_status' => 'trash',
-                ));
+                ]);
             }
 
 
-            return array('success' => false, 'message' => '');
+            return ['success' => false, 'message' => ''];
         }
         // اگر محصول وجود نداشت، یک شیء خالی ووکامرس بساز
         $notExist = false;
@@ -1438,7 +1438,7 @@ function create_product($args)
             // رد شدن از متغیر تو در تو (سفارشی‌سازی)
             $attr = $product->get_attributes();
             if(is_object($attr[array_key_first($attr)]) && get_class($attr[array_key_first($attr)]) === 'stdClass'){
-                return array('success' => false, 'message' => 'کالای دارای جزئیات نمیتواند بعنوان متغییر یک محصول متغییر همگام سازی شود.');
+                return ['success' => false, 'message' => 'کالای دارای جزئیات نمیتواند بعنوان متغییر یک محصول متغییر همگام سازی شود.'];
             }
 
             // ویژگی دارای options خالی یا null است (سفارشی‌سازی)
@@ -1581,8 +1581,8 @@ function create_product($args)
         if ($args['detailSync'] == 0) {
             if (!empty($args['vars'])) {
                 $selectedInvisibleVariation = !empty($options['variationVisibilityType']) ? ($options['variationVisibilityType']) : '';
-                $invisibles = !empty($selectedInvisibleVariation['invisible']) ? array_values($selectedInvisibleVariation['invisible']) : array();
-                $for_variation = !empty($selectedInvisibleVariation['for_variation']) ? array_values($selectedInvisibleVariation['for_variation']) : array();
+                $invisibles = !empty($selectedInvisibleVariation['invisible']) ? array_values($selectedInvisibleVariation['invisible']) : [];
+                $for_variation = !empty($selectedInvisibleVariation['for_variation']) ? array_values($selectedInvisibleVariation['for_variation']) : [];
                 if (count($for_variation) < count(get_properties()))
                     $defaultAttributes = true;
 
@@ -1677,10 +1677,10 @@ function create_product($args)
         $product_id = $product->save();
 
         if ($optionDescription && isset($args['description']) && $args['detailSync'] == 0) {
-            $post_update = array(
+            $post_update = [
                 'ID'         => $product_id,
                 'post_content' => $args['description']
-            );
+            ];
 
             wp_update_post($post_update);
         }
@@ -1690,10 +1690,10 @@ function create_product($args)
         if (class_exists('barcode_in_permallinks') && $args['new'] == 1 && !empty($barcode)) {
 
             wp_update_post(
-                array(
+                [
                     'ID'        => $product_id,
                     'post_name' => $barcode
-                )
+                ]
             );
         }
         if ($SerialProduct) {
@@ -1720,7 +1720,7 @@ function create_product($args)
         }
         if ($args['priceSync'] == 0) {
 
-            $final_price = array();
+            $final_price = [];
             if (class_exists('WooCommerce_Role_Based_Price_Product_Pricing')) {
                 $enable = 0;
                 $role_price_levels = !empty($args['prices_list']) ? json_decode($args['prices_list']) : [];
@@ -1791,7 +1791,7 @@ function create_product($args)
                 $ThirdRangeQuantityLevel =  get_post_meta($product_id, "_level_third_dynamic_price", true);
                 $thirdRangeQuantityTo = get_post_meta($product_id, "_max_quantity_third_dynamic_price", true);
 
-                $rules = array();
+                $rules = [];
                 $role_price_levels = !empty($args['prices_list']) ? json_decode($args['prices_list']) : [];
                 $role_price_levels  = (json_decode(json_encode($role_price_levels), true));
 
@@ -1893,15 +1893,15 @@ function create_product($args)
 
         wc_delete_product_transients($product_id);
 
-        return array('success' => true, 'message' => '');
+        return ['success' => true, 'message' => ''];
     } catch (\Exception $e) {
-        return array('success' => false, 'message' => $e->getMessage());
+        return ['success' => false, 'message' => $e->getMessage()];
     }
 }
 
 function map_serial($key, $value)
 {
-    return array('ProductDetailID' => $key, 'Qty' => $value);
+    return ['ProductDetailID' => $key, 'Qty' => $value];
 }
 /*
 |--------------------------------------------------------------------------
@@ -1943,14 +1943,14 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
             return false;
         }
 
-        $variation_post = array(
+        $variation_post = [
             'post_title'  => $product->get_name(),
             'post_name'   => 'product-' . $product_id . '-variation',
             'post_status' => 'publish',
             'post_parent' => $product_id,
             'post_type'   => 'product_variation',
             'guid'        => substr($product->get_permalink(), 0, 200)
-        );
+        ];
 
 
         // ===== ایجاد ویرایش محصول در وردپرس =====
@@ -2132,7 +2132,7 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
             $ThirdRangeQuantityLevel =  get_post_meta($variation_id, "_level_third_dynamic_price", true);
             $thirdRangeQuantityTo = get_post_meta($variation_id, "_max_quantity_third_dynamic_price", true);
 
-            $rules = array();
+            $rules = [];
             $role_price_levels = !empty($productArgs['prices_list']) ? json_decode($productArgs['prices_list']) : [];
             $role_price_levels  = (json_decode(json_encode($role_price_levels), true));
 
@@ -2290,13 +2290,13 @@ function wc_get_product_object_type($type, $sku, $publishStatus = 'draft')
 }
 function bazara_get_product_by_sku($sku)
 {
-    $posts = get_posts(array(
+    $posts = get_posts([
         'posts_per_page'   => -1,
-        'post_type'        => array('product', 'product_variation'),
+        'post_type'        => ['product', 'product_variation'],
         'meta_key'   => '_sku',
         'meta_value' => $sku,
-        'post_status' => array('publish', 'private', 'draft')
-    ));
+        'post_status' => ['publish', 'private', 'draft']
+    ]);
     $product = null;
     if (!empty($posts))
         $product = wc_get_product($posts[0]->ID);
@@ -2304,13 +2304,13 @@ function bazara_get_product_by_sku($sku)
 }
 function get_product_by_mahakID($mahak_product_id)
 {
-    $posts = get_posts(array(
+    $posts = get_posts([
         'posts_per_page'   => -1,
         'post_type'        => 'product',
         'meta_key'   => 'mahak_id',
         'meta_value' => $mahak_product_id,
         'post_status' => 'any'
-    ));
+    ]);
     $product = null;
     if (!empty($posts))
         $product = wc_get_product($posts[0]->ID);
@@ -2405,8 +2405,8 @@ function get_product_variation($variation_id, $detailID)
 
     // مدیریت موارد تکراری: بررسی تصاویر و نگه‌داشتن بهترین
     if (count($results) > 1) {
-        $variations_with_images = array();
-        $variations_without_images = array();
+        $variations_with_images = [];
+        $variations_without_images = [];
 
         // بررسی هر ویژگی برای وجود تصویر
         foreach ($results as $row) {
@@ -2421,23 +2421,23 @@ function get_product_variation($variation_id, $detailID)
             $has_image = !empty($image_id) && wp_attachment_is_image($image_id);
 
             if ($has_image) {
-                $variations_with_images[] = array(
+                $variations_with_images[] = [
                     'ID' => $row->ID,
                     'post_date' => $row->post_date,
                     'product' => $variation_obj
-                );
+                ];
             } else {
-                $variations_without_images[] = array(
+                $variations_without_images[] = [
                     'ID' => $row->ID,
                     'post_date' => $row->post_date,
                     'product' => $variation_obj
-                );
+                ];
             }
         }
 
         // تعیین اینکه کدام ویژگی نگه داشته شود
         $keep_variation = null;
-        $duplicate_ids_to_delete = array();
+        $duplicate_ids_to_delete = [];
 
         // بررسی اطمینان: اگر ویژگی معتبری یافت نشد، null برگردان
         if (empty($variations_with_images) && empty($variations_without_images)) {
@@ -2473,11 +2473,11 @@ function get_product_variation($variation_id, $detailID)
                 }
             } else {
                 // جایگزین: نباید اتفاق بیفتد، اما اولین نتیجه نگه داشته شود
-                $keep_variation = array(
+                $keep_variation = [
                     'ID' => $results[0]->ID,
                     'post_date' => $results[0]->post_date,
                     'product' => wc_get_product($results[0]->ID)
-                );
+                ];
                 foreach ($results as $idx => $row) {
                     if ($idx > 0) {
                         $duplicate_ids_to_delete[] = $row->ID;
@@ -2582,14 +2582,14 @@ function bz_cleanup_variations_marked_deleted($limit = 200)
     );
 
     if (empty($productDetailIds)) {
-        return array(
+        return [
             'processed' => 0,
-            'deleted_variations' => array(),
+            'deleted_variations' => [],
             'message' => 'No deleted ProductDetailId records found.'
-        );
+        ];
     }
 
-    $deletedVariationIds = array();
+    $deletedVariationIds = [];
 
     // آماده‌سازی و استفاده مجدد از SQL برای یافتن ویژگی‌ها بر اساس ProductDetailId
     foreach ($productDetailIds as $detailId) {
@@ -2639,11 +2639,11 @@ function bz_cleanup_variations_marked_deleted($limit = 200)
         }
     }
 
-    return array(
+    return [
         'processed' => count($productDetailIds),
         'deleted_variations' => $deletedVariationIds,
         'message' => 'Cleanup complete.'
-    );
+    ];
 }
 
 /**
@@ -3026,7 +3026,7 @@ function bz_cleanup_duplicate_variations_from_report( $limit = 100 ) {
 // تابع کمکی که ویژگی‌های محصول را قبل از ذخیره آماده می‌کند
 function wc_prepare_product_attributes($attributes, $pid)
 {
-    $data = $array = $vals = array();
+    $data = $array = $vals = [];
     $position = $lastPos = 0;
     $options =  get_bazara_visitor_settings();
     $KeepLastAttributes = toggle_to_boolean($options['chkDontRemoveAttributes']);
@@ -3037,7 +3037,7 @@ function wc_prepare_product_attributes($attributes, $pid)
 
         foreach ($data as $taxonomy => $values) {
             $taxonomy_id = wc_attribute_taxonomy_id_by_name($values['name']);     // دریافت شناسه دسته‌بندی
-            $a = wc_get_product_terms($pid, $values['name'], array('fields' => 'names'));
+            $a = wc_get_product_terms($pid, $values['name'], ['fields' => 'names']);
             if (empty($a))
                 $a = array_shift(woocommerce_get_product_terms($pid, $values['name'], 'names'));
 
@@ -3066,15 +3066,15 @@ function wc_prepare_product_attributes($attributes, $pid)
                 $a = register_taxonomy(
                     $taxonomy,
                     'product',
-                    array(
+                    [
                         'hierarchical' => false,
                         'label' => ucfirst($taxonomy),
                         'query_var' => true,
-                        'rewrite' => array(
+                        'rewrite' => [
                             'slug' => $taxonomy,
                             'with_front' => false
-                        ),
-                    )
+                        ],
+                    ]
                 );
             }
 
@@ -3124,7 +3124,7 @@ function get_product_attributes_plugin($product)
     ));
 
     // بررسی کلیدهای ویژگی در هر نتیجه - اگر کلید pa_ نداشت از name استفاده می‌کند
-    $result = array();
+    $result = [];
 
     if (!empty($results)) {
         foreach ($results as $_product_attributes) {
@@ -3165,20 +3165,20 @@ function prefix_get_available_shipping_methods()
 {
 
     if (! class_exists('WC_Shipping_Zones')) {
-        return array();
+        return [];
     }
 
     $zones = WC_Shipping_Zones::get_zones();
 
     if (! is_array($zones)) {
-        return array();
+        return [];
     }
 
     $shipping_methods = array_column($zones, 'shipping_methods');
 
     $flatten = array_merge(...$shipping_methods);
 
-    $normalized_shipping_methods = array();
+    $normalized_shipping_methods = [];
 
     foreach ($flatten as $key => $class) {
         $normalized_shipping_methods[$class->id] = $class->method_title;
@@ -3196,7 +3196,7 @@ function get_shipping_method()
 {
 
     if (! class_exists('WC_Shipping_Zones')) {
-        return array();
+        return [];
     }
     $shippings = [];
     $methods = prefix_get_available_shipping_methods();
@@ -3425,7 +3425,7 @@ function get_left_behind_orders($max_id)
     global $wpdb;
 
     if (empty($max_id) || $max_id <= 0) {
-        return array();
+        return [];
     }
 
     $query = $wpdb->prepare("
@@ -3452,7 +3452,7 @@ function get_left_behind_orders_hpos($max_id)
 
     // اگر max_id معتبر نباشد، هیچ سفارش جا‌مانده‌ای وجود ندارد
     if (empty($max_id) || $max_id <= 0) {
-        return array();
+        return [];
     }
 
     $table_order_item = "{$wpdb->prefix}wc_orders";
@@ -3475,7 +3475,7 @@ function get_left_behind_orders_from_limit($sync_limit, $max_id)
     global $wpdb;
 
     if (empty($sync_limit) || $sync_limit <= 0 || empty($max_id) || $max_id <= 0 || $sync_limit >= $max_id) {
-        return array();
+        return [];
     }
 
     $query = $wpdb->prepare("
@@ -3503,7 +3503,7 @@ function get_left_behind_orders_from_limit_hpos($sync_limit, $max_id)
 
     // اگر sync_limit یا max_id معتبر نباشند، هیچ سفارش جا‌مانده‌ای وجود ندارد
     if (empty($sync_limit) || $sync_limit <= 0 || empty($max_id) || $max_id <= 0 || $sync_limit >= $max_id) {
-        return array();
+        return [];
     }
 
     $table_order_item = "{$wpdb->prefix}wc_orders";
@@ -3592,20 +3592,20 @@ function update_wp_roles($roles)
         add_role(
             $key,
             $role['Name'],
-            array(
+            [
                 'read' => true,
                 'level_0' => true
-            )
+            ]
         );
         if ($wholeSale) {
             $admin_role->addCustomRole($key, $role['Name']);
             $admin_role->registerCustomRole(
                 $key,
                 $role['Name'],
-                array(
+                [
                     'desc'                        => '',
                     'onlyAllowWholesalePurchases' => true,
-                )
+                ]
             );
             $admin_role->addCustomCapability($key, 'have_wholesale_price');
         }
@@ -3899,7 +3899,7 @@ function get_bazara_user_token($token = '')
         $bazara = new BazaraApi(false);
         $token_result = $bazara->login_token();
         if (!$token_result['success'])
-            return array('success' => false, 'message' => $token_result['message']);
+            return ['success' => false, 'message' => $token_result['message']];
         $token = $token_result['message'];
     }
     return $token;
@@ -3985,7 +3985,7 @@ function bazara_payment_method_is_cod($method)
     if (empty($method))
         return true;
 
-    $paymentMethods = array('cod', 'cheque', 'bacs');
+    $paymentMethods = ['cod', 'cheque', 'bacs'];
 
     if (in_array($method, $paymentMethods))
         return true;
@@ -4074,7 +4074,7 @@ function convert_non_persian_chars_to_persian($str)
 {
     //main goal: arabic chars: from ؀ U+0600 (&#1536;) to ۿ U+06FF (&#1791;)
     //source: https://unicode-table.com/en
-    $right_chars = array(
+    $right_chars = [
         'ا',
         'ب',
         'پ',
@@ -4108,15 +4108,15 @@ function convert_non_persian_chars_to_persian($str)
         'ه',
         'ی',
         '‌', /* نیم‌فاصله (یونیکد: U+200C یا HTML: &#8204;) */
-    );
+    ];
     // اولین کاراکتر هر آرایه، کاراکتر صحیح (فارسی) است
-    $all_like_chars = array(
-        $alef = array(
+    $all_like_chars = [
+        $alef = [
             'ا',
             'ݳ',
             'ݴ',
-        ),
-        $be = array(
+        ],
+        $be = [
             'ب',
             'ٻ',
             'ڀ',
@@ -4124,50 +4124,50 @@ function convert_non_persian_chars_to_persian($str)
             'ݔ',
             'ݕ',
             'ݖ',
-        ),
-        $pe = array(
+        ],
+        $pe = [
             'پ',
             'ݐ',
             'ݒ',
             'ݓ',
-        ),
-        $te = array(
+        ],
+        $te = [
             'ت',
             'ٺ',
             'ټ',
             'ٽ',
             'ٿ',
-        ),
-        $se = array(
+        ],
+        $se = [
             'ث',
             'ٹ',
-        ),
-        $jim = array(
+        ],
+        $jim = [
             'ج',
             'ڃ',
             'ڄ',
             'ݼ',
-        ),
-        $che = array(
+        ],
+        $che = [
             'چ',
             'ڇ',
             'ڿ',
             'ݘ',
             'ݮ',
             'ݯ',
-        ),
-        $he = array(
+        ],
+        $he = [
             'ح',
             'ځ',
             'ڂ',
             'څ',
             'ݗ',
-        ),
-        $khe = array(
+        ],
+        $khe = [
             'خ',
             'ݲ',
-        ),
-        $dal = array(
+        ],
+        $dal = [
             'د',
             'ڈ',
             'ډ',
@@ -4181,11 +4181,11 @@ function convert_non_persian_chars_to_persian($str)
             'ݙ',
             'ݚ',
             'ۮ',
-        ),
-        $zal = array(
+        ],
+        $zal = [
             'ذ',
-        ),
-        $re = array(
+        ],
+        $re = [
             'ر',
             'ړ',
             'ڔ',
@@ -4201,56 +4201,56 @@ function convert_non_persian_chars_to_persian($str)
             'ڗ',
             'ڙ',
             'ݱ',
-        ),
-        $ze = array(
+        ],
+        $ze = [
             'ز',
-        ),
-        $zhe = array(
+        ],
+        $zhe = [
             'ژ',
-        ),
-        $sin = array(
+        ],
+        $sin = [
             'س',
             'ښ',
             'ڛ',
             'ݭ',
             'ݽ',
-        ),
-        $shin = array(
+        ],
+        $shin = [
             'ش',
             'ݜ',
             'ڜ',
             'ݰ',
             'ݾ',
             'ۺ',
-        ),
-        $sad = array(
+        ],
+        $sad = [
             'ص',
             'ڝ',
             'ڞ',
-        ),
-        $zad = array(
+        ],
+        $zad = [
             'ض',
             'ۻ',
-        ),
-        $ta = array(
+        ],
+        $ta = [
             'ط',
             'ڟ',
-        ),
-        $za = array(
+        ],
+        $za = [
             'ظ',
-        ),
-        $ain = array(
+        ],
+        $ain = [
             'ع',
-        ),
-        $ghain = array(
+        ],
+        $ghain = [
             'غ',
             'ڠ',
             'ݝ',
             'ݞ',
             'ݟ',
             'ۼ',
-        ),
-        $fe = array(
+        ],
+        $fe = [
             'ف',
             'ڡ',
             'ڢ',
@@ -4260,14 +4260,14 @@ function convert_non_persian_chars_to_persian($str)
             'ڦ',
             'ݠ',
             'ݡ',
-        ),
-        $ghaf = array(
+        ],
+        $ghaf = [
             'ق',
             'ٯ',
             'ڧ',
             'ڨ',
-        ),
-        $kaf = array(
+        ],
+        $kaf = [
             'ک',
             'ػ',
             'ؼ',
@@ -4281,30 +4281,30 @@ function convert_non_persian_chars_to_persian($str)
             'ݣ',
             'ݤ',
             'ݿ',
-        ),
-        $gaf = array(
+        ],
+        $gaf = [
             'گ',
             'ڰ',
             'ڱ',
             'ڲ',
             'ڳ',
             'ڴ',
-        ),
-        $lam = array(
+        ],
+        $lam = [
             'ل',
             'ڵ',
             'ڶ',
             'ڷ',
             'ڸ',
             'ݪ',
-        ),
-        $mim = array(
+        ],
+        $mim = [
             'م',
             'ݥ',
             'ݦ',
             '۾',
-        ),
-        $noon = array(
+        ],
+        $noon = [
             'ن',
             'ڹ',
             'ں',
@@ -4314,8 +4314,8 @@ function convert_non_persian_chars_to_persian($str)
             'ݧ',
             'ݨ',
             'ݩ',
-        ),
-        $vav = array(
+        ],
+        $vav = [
             'و',
             'ٶ',
             'ٷ',
@@ -4330,8 +4330,8 @@ function convert_non_persian_chars_to_persian($str)
             'ۏ',
             'ݸ',
             'ݹ',
-        ),
-        $ha = array(
+        ],
+        $ha = [
             'ه',
             'ھ',
             'ہ',
@@ -4339,8 +4339,8 @@ function convert_non_persian_chars_to_persian($str)
             'ۃ',
             'ە',
             'ۿ',
-        ),
-        $ye = array(
+        ],
+        $ye = [
             'ی',
             'ؽ',
             'ؾ',
@@ -4358,13 +4358,13 @@ function convert_non_persian_chars_to_persian($str)
             'ݷ',
             'ݺ',
             'ݻ',
-        ),
+        ],
         // سی‌ودومین
-        $nim_fasele = array(
+        $nim_fasele = [
             '‌', /* نیم‌فاصله (یونیکد: U+200C یا HTML: &#8204;) */
             '¬',
-        ),
-    );
+        ],
+    ];
     for ($i = 0; $i <= 32; $i++) {
         $str = str_replace($all_like_chars[$i], $right_chars[$i], $str);
     }
