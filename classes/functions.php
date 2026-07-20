@@ -494,8 +494,8 @@ function change_visitor()
     $table_name_post = $wpdb->prefix . 'posts';
     $table_name_bazara_products = $wpdb->prefix . 'bazara_products';
     $table_name_user_meta = $wpdb->prefix . 'usermeta';
-    $wpdb->query("update $table_name_post pm,(select $table_name_post.ID as ID from $table_name_post 
-                JOIN $table_name_post_meta ON $table_name_post_meta.post_id = $table_name_post.ID 
+    $wpdb->query("update $table_name_post pm,(select $table_name_post.ID as ID from $table_name_post
+                JOIN $table_name_post_meta ON $table_name_post_meta.post_id = $table_name_post.ID
                 WHERE $table_name_post_meta.meta_key ='mahak_id') sp set pm.post_status = 'trash' WHERE pm.ID = sp.ID;");
     $wpdb->query("DELETE FROM $table_name_user_meta where meta_key LIKE 'mahak_%'");
     $wpdb->query("DELETE FROM $table_name_post_meta where meta_key LIKE 'mahak_%'");
@@ -520,7 +520,6 @@ function change_visitor()
         'bazara_order_details',
 
     ];
-
 
 
     for ($i = 0; $i < count($entities); $i++) {
@@ -565,7 +564,7 @@ function get_product_details($ProductID, $StoreID = "")
     if (!empty($StoreID))
         $cond .= " where StoreId in({$StoreID}) ";
 
-    $query = "SELECT 
+    $query = "SELECT
     detail.ProductDetailId as ProductDetailId,
     detail.Properties as Properties,
     detail.Prices as Prices,
@@ -576,11 +575,11 @@ function get_product_details($ProductID, $StoreID = "")
     detailAsset.Count1 as Count1,
     detailAsset.Count2 as Count2,
     detail.Prices as Prices,
-    (CASE WHEN((select count(1) as cnt from {$wpdb->prefix}bazara_product_details  
-    where NOT Properties IS NULL and Deleted = 1 
+    (CASE WHEN((select count(1) as cnt from {$wpdb->prefix}bazara_product_details
+    where NOT Properties IS NULL and Deleted = 1
     AND  ProductId = {$ProductID}
-    group by ProductId having count(*) >= 1 ) = (select count(1) as cnt from {$wpdb->prefix}bazara_product_details  
-    where NOT Properties IS NULL  
+    group by ProductId having count(*) >= 1 ) = (select count(1) as cnt from {$wpdb->prefix}bazara_product_details
+    where NOT Properties IS NULL
     AND  ProductId = {$ProductID}
     group by ProductId having count(*) >= 1 ) )THEN
     1
@@ -589,9 +588,9 @@ function get_product_details($ProductID, $StoreID = "")
     END) as NotVariation ,
     detailAsset.ProductDetailStoreAssetId as ProductDetailStoreAssetId
     FROM {$wpdb->prefix}bazara_product_details as detail
-    LEFT JOIN (select StoreId,ProductDetailId,sum(Count1) as Count1,sum(Count2) as Count2,ProductDetailStoreAssetId from {$wpdb->prefix}bazara_product_assets {$cond}  GROUP by ProductDetailId) as detailAsset 
-    ON detail.ProductDetailId = detailAsset.ProductDetailId 
-    
+    LEFT JOIN (select StoreId,ProductDetailId,sum(Count1) as Count1,sum(Count2) as Count2,ProductDetailStoreAssetId from {$wpdb->prefix}bazara_product_assets {$cond}  GROUP by ProductDetailId) as detailAsset
+    ON detail.ProductDetailId = detailAsset.ProductDetailId
+
     WHERE
     detail.ProductId = {$ProductID} ORDER BY detail.p_d_id ASC";
     return $wpdb->get_results($query);
@@ -603,7 +602,7 @@ function get_product_details_unsynced($ProductID, $StoreID = "")
     if (!empty($StoreID))
         $cond .= " where StoreId in({$StoreID}) ";
 
-    $query = "SELECT 
+    $query = "SELECT
     detail.ProductDetailId as ProductDetailId,
     detail.Properties as Properties,
     detail.Prices as Prices,
@@ -615,13 +614,13 @@ function get_product_details_unsynced($ProductID, $StoreID = "")
     detailAsset.Count2 as Count2,
     detail.Prices as Prices,
     (
-        CASE 
+        CASE
             WHEN detail.Properties IS NOT NULL THEN 0 ELSE 1 END) as NotVariation ,
     detailAsset.ProductDetailStoreAssetId as ProductDetailStoreAssetId
     FROM {$wpdb->prefix}bazara_product_details as detail
-    LEFT JOIN (select StoreId,ProductDetailId,sum(Count1) as Count1,sum(Count2) as Count2,ProductDetailStoreAssetId from {$wpdb->prefix}bazara_product_assets {$cond}  GROUP by ProductDetailId) as detailAsset 
-    ON detail.ProductDetailId = detailAsset.ProductDetailId 
-    
+    LEFT JOIN (select StoreId,ProductDetailId,sum(Count1) as Count1,sum(Count2) as Count2,ProductDetailStoreAssetId from {$wpdb->prefix}bazara_product_assets {$cond}  GROUP by ProductDetailId) as detailAsset
+    ON detail.ProductDetailId = detailAsset.ProductDetailId
+
     WHERE
     detail.ProductId = {$ProductID} AND detail.Deleted = 0 ORDER BY detail.p_d_id ASC";
 
@@ -1334,8 +1333,6 @@ function create_product($args)
             $product_code = $barcode;
 
 
-
-
         // جستجوی محصول: ابتدا از روی SKU، سپس از روی mahak_id
         // اگر SKU تکراری بود، mahak_id محصول قبلی را پاک می‌کند
         $product = bazara_get_product_by_sku($product_code);
@@ -1349,7 +1346,6 @@ function create_product($args)
 
         // اگر محصول در ERP حذف شده، آن را به زباله‌دان منتقل کن
         if ($args['deleted']) {
-
 
 
             update_schedule_sync($args['ProductId'], 'detailSync');
@@ -1409,7 +1405,6 @@ function create_product($args)
         }
         // آپدیت جزئیات محصول (نام، دسته‌بندی، برچسب‌ها) فقط اگر detailSync=0 باشد
         if ($args['detailSync'] == 0) {
-
 
 
             if ($notExist || $OptionTitle)
@@ -1650,7 +1645,6 @@ function create_product($args)
             }
 
 
-
             if (empty($args['vars']))
                 update_schedule_sync($args['ProductId'], 'priceSync');
             // مالیات‌ها
@@ -1659,7 +1653,7 @@ function create_product($args)
                 $product->set_tax_class($args['tax_class']);
             }
         }
-/*
+        /*
 |--------------------------------------------------------------------------
 | نگاشت گروه‌های اشخاص ERP به نقش‌های قیمتی ووکامرس
 |--------------------------------------------------------------------------
@@ -1740,7 +1734,6 @@ function create_product($args)
                                 $p = '';
                             else
                                 $enable = 1;
-
 
 
                             if ($OptionPrice) {
@@ -1989,7 +1982,6 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
         $variation->set_menu_order($c);
 
 
-
         if ($chkExcludedProductsByCategory && !empty($ExcludedProductsByCategory)) {
 
 
@@ -2020,16 +2012,16 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
 
             $qty = $args['qty'];
             if ($qty <= 0)
-            {
-                if (class_exists("bazara_manage_quantity")){
-                    $variation->set_stock_quantity(0);
-                    $variation->set_manage_stock(true);
-                    $variation->set_stock_status('instock');
-                }else{
-                    $variation->set_manage_stock(false);
-                    product_out_of_Stock($variation->get_id());
-                }
-            } else {
+                {
+                    if (class_exists("bazara_manage_quantity")){
+                        $variation->set_stock_quantity(0);
+                        $variation->set_manage_stock(true);
+                        $variation->set_stock_status('instock');
+                    }else{
+                        $variation->set_manage_stock(false);
+                        product_out_of_Stock($variation->get_id());
+                    }
+                } else {
                 $variation->set_stock_quantity($args['qty']);
                 $variation->set_manage_stock(true);
                 $variation->set_stock_status('instock');
@@ -2059,9 +2051,6 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
 
             if (($RegularPrice == '' || ($RegularPrice > 0 && $RegularPrice < $price)) && $RegularPrice <> -1)
                 $variation->set_sale_price($RegularPrice);
-
-
-
 
 
             update_schedule_sync($productArgs['ProductId'], 'priceSync', 1, 'bazara_products', 'ProductID');
@@ -2124,7 +2113,6 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
         if (class_exists("bazaraDynamicPrice")) {
 
 
-
             $FirstRangeQuantityLevel =  get_post_meta($variation_id, "_level_first_dynamic_price", true);
             $firstRangeQuantityTo =  get_post_meta($variation_id, "_max_quantity_first_dynamic_price", true);
             $SecondRangeQuantityLevel =  get_post_meta($variation_id, "_level_second_dynamic_price", true);
@@ -2183,7 +2171,6 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
         delete_product_wcrb_transient($variation_id);
 
     wc_delete_product_transients($variation_id);     // پاک‌سازی/بازسازی کش ویژگی‌ها
-
 
 
 }
@@ -3294,7 +3281,6 @@ function bazara_run_product_synchronize()
         bz_cleanup_duplicate_variations_from_report();
 
 
-
         if (get_product_cnt() > 0) {
             if ($syncCategory)
                 $bazara->start_sync_category(null, $syncCategory);
@@ -3394,8 +3380,8 @@ function get_order_item_meta_payment_hpos($orderid)
 
     $table_order_item = "{$wpdb->prefix}wc_orders";
 
-    $results = $wpdb->get_results($wpdb->prepare("SELECT * 	
-	from `$table_order_item` as p 
+    $results = $wpdb->get_results($wpdb->prepare("SELECT *
+	from `$table_order_item` as p
 	where  p.id = %d", $orderid));
 
     if ($results)
@@ -3407,10 +3393,10 @@ function get_orders_hpos($orderID = 32220)
     global $wpdb;
     $table_order_item = "{$wpdb->prefix}wc_orders";
     $query = $wpdb->prepare("
-        SELECT p.id 
+        SELECT p.id
         FROM `$table_order_item` as p
-        LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm 
-        ON (p.id=pm.post_id AND pm.meta_key = 'mahak_id') 
+        LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm
+        ON (p.id=pm.post_id AND pm.meta_key = 'mahak_id')
         WHERE p.status IN ('wc-completed', 'wc-processing', 'wc-processing5', 'wc-pws-packaged', 'wc-pws-shipping', 'wc-arrival-shipment')
         AND p.id >= %d
         AND (pm.meta_key IS NULL)
@@ -3430,15 +3416,15 @@ function get_left_behind_orders($max_id)
 
     $query = $wpdb->prepare("
         SELECT posts.ID
-        FROM  `{$wpdb->posts}` AS posts 
-        JOIN (SELECT p.ID, p.post_title 
-              FROM `{$wpdb->posts}` as p 
-              LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm 
-              ON (p.ID=pm.post_id AND pm.meta_key = 'mahak_id') 
-              WHERE p.post_type = 'shop_order' 
-              AND (pm.meta_key IS NULL)) s2 
+        FROM  `{$wpdb->posts}` AS posts
+        JOIN (SELECT p.ID, p.post_title
+              FROM `{$wpdb->posts}` as p
+              LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm
+              ON (p.ID=pm.post_id AND pm.meta_key = 'mahak_id')
+              WHERE p.post_type = 'shop_order'
+              AND (pm.meta_key IS NULL)) s2
         ON s2.ID = posts.ID
-        WHERE posts.post_type = 'shop_order' 
+        WHERE posts.post_type = 'shop_order'
         AND posts.post_status IN ('wc-completed', 'wc-processing', 'wc-processing5', 'wc-pws-packaged', 'wc-pws-shipping', 'wc-arrival-shipment')
         AND posts.ID < %d
         ORDER BY posts.ID ASC", $max_id);
@@ -3457,10 +3443,10 @@ function get_left_behind_orders_hpos($max_id)
 
     $table_order_item = "{$wpdb->prefix}wc_orders";
     $query = $wpdb->prepare("
-        SELECT p.id 
+        SELECT p.id
         FROM `$table_order_item` as p
-        LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm 
-        ON (p.id=pm.post_id AND pm.meta_key = 'mahak_id') 
+        LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm
+        ON (p.id=pm.post_id AND pm.meta_key = 'mahak_id')
         WHERE p.status IN ('wc-completed', 'wc-processing', 'wc-processing5', 'wc-pws-packaged', 'wc-pws-shipping', 'wc-arrival-shipment')
         AND p.id < %d
         AND (pm.meta_key IS NULL)
@@ -3480,15 +3466,15 @@ function get_left_behind_orders_from_limit($sync_limit, $max_id)
 
     $query = $wpdb->prepare("
         SELECT posts.ID
-        FROM  `{$wpdb->posts}` AS posts 
-        JOIN (SELECT p.ID, p.post_title 
-              FROM `{$wpdb->posts}` as p 
-              LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm 
-              ON (p.ID=pm.post_id AND pm.meta_key = 'mahak_id') 
-              WHERE p.post_type = 'shop_order' 
-              AND (pm.meta_key IS NULL)) s2 
+        FROM  `{$wpdb->posts}` AS posts
+        JOIN (SELECT p.ID, p.post_title
+              FROM `{$wpdb->posts}` as p
+              LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm
+              ON (p.ID=pm.post_id AND pm.meta_key = 'mahak_id')
+              WHERE p.post_type = 'shop_order'
+              AND (pm.meta_key IS NULL)) s2
         ON s2.ID = posts.ID
-        WHERE posts.post_type = 'shop_order' 
+        WHERE posts.post_type = 'shop_order'
         AND posts.post_status IN ('wc-completed', 'wc-processing', 'wc-processing5', 'wc-pws-packaged', 'wc-pws-shipping', 'wc-arrival-shipment')
         AND posts.ID >= %d
         AND posts.ID < %d
@@ -3508,10 +3494,10 @@ function get_left_behind_orders_from_limit_hpos($sync_limit, $max_id)
 
     $table_order_item = "{$wpdb->prefix}wc_orders";
     $query = $wpdb->prepare("
-        SELECT p.id 
+        SELECT p.id
         FROM `$table_order_item` as p
-        LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm 
-        ON (p.id=pm.post_id AND pm.meta_key = 'mahak_id') 
+        LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm
+        ON (p.id=pm.post_id AND pm.meta_key = 'mahak_id')
         WHERE p.status IN ('wc-completed', 'wc-processing', 'wc-processing5', 'wc-pws-packaged', 'wc-pws-shipping', 'wc-arrival-shipment')
         AND p.id >= %d
         AND p.id < %d
@@ -3529,7 +3515,7 @@ function get_orders_address_hpos($orderID = 32220, $address_type = 'shipping') /
 
     $query = $wpdb->prepare("SELECT *
 	from
-	`$table_order_addresses` 
+	`$table_order_addresses`
 	 where address_type = %s
 	 and order_id = %d ", $address_type, $orderID);
     $results = $wpdb->get_row($query);
@@ -3556,13 +3542,13 @@ function get_pictures()
     $query = "SELECT {$wpdb->prefix}bazara_pictures.RowVersion as RowVersion,
                      {$wpdb->prefix}bazara_pictures.PictureId as PictureId,
                      {$wpdb->prefix}bazara_photo_gallery.ItemCode as ItemCode,
-                     {$wpdb->prefix}bazara_pictures.Url as Url 
-              FROM {$wpdb->prefix}bazara_pictures 
-              JOIN {$wpdb->prefix}bazara_photo_gallery 
-              ON {$wpdb->prefix}bazara_pictures.PictureId = {$wpdb->prefix}bazara_photo_gallery.PictureId 
-              WHERE ({$wpdb->prefix}bazara_pictures.isSync = 0 or {$wpdb->prefix}bazara_pictures.isSync IS NULL) 
-              AND ({$wpdb->prefix}bazara_pictures.queue = 0 or {$wpdb->prefix}bazara_pictures.queue IS NULL) 
-              AND {$wpdb->prefix}bazara_photo_gallery.Deleted = 0 
+                     {$wpdb->prefix}bazara_pictures.Url as Url
+              FROM {$wpdb->prefix}bazara_pictures
+              JOIN {$wpdb->prefix}bazara_photo_gallery
+              ON {$wpdb->prefix}bazara_pictures.PictureId = {$wpdb->prefix}bazara_photo_gallery.PictureId
+              WHERE ({$wpdb->prefix}bazara_pictures.isSync = 0 or {$wpdb->prefix}bazara_pictures.isSync IS NULL)
+              AND ({$wpdb->prefix}bazara_pictures.queue = 0 or {$wpdb->prefix}bazara_pictures.queue IS NULL)
+              AND {$wpdb->prefix}bazara_photo_gallery.Deleted = 0
               AND {$wpdb->prefix}bazara_pictures.Deleted = 0
               ORDER BY {$wpdb->prefix}bazara_pictures.filename ASC, {$wpdb->prefix}bazara_photo_gallery.ItemCode";
     return $wpdb->get_results($query);
@@ -3682,7 +3668,7 @@ function get_bazara_not_converted_qty($productDetailId)
     $max_id = (!empty($Order_Max_ID) ? $Order_Max_ID : 0);
     $results =    $wpdb->get_results($wpdb->prepare("select IFNULL(sum(Count1),0) as qty from `$table_orders` o
     JOIN `$table_orderDetails` od ON od.OrderId = o.OrderId
-     where orderCode = 0 AND ProductDetailId = %d 
+     where orderCode = 0 AND ProductDetailId = %d
      AND o.Deleted = false AND od.Deleted = false
      AND o.OrderClientId >= %d ", $productDetailId, $max_id));
 
@@ -3744,7 +3730,7 @@ function get_order_item_meta($order_item_id)
 	max( CASE WHEN pm.meta_key = '_product_id' and p.order_item_id = pm.order_item_id THEN pm.meta_value END ) as productID,
 	max( CASE WHEN pm.meta_key = '_qty' and p.order_item_id = pm.order_item_id THEN pm.meta_value END ) as Qty,
 	max( CASE WHEN pm.meta_key = '_variation_id' and p.order_item_id = pm.order_item_id THEN pm.meta_value END ) as variantID
-    
+
 	from
 	`$table_order_item` as p,
 	`$table_order_item_meta` as pm
@@ -4015,15 +4001,15 @@ function get_orders($orderID = 32220)
         $where = " AND posts.ID >= %d";
     $query = $wpdb->prepare("
         SELECT posts.ID
-        FROM  `{$wpdb->posts}` AS posts 
-        JOIN (SELECT p.ID, p.post_title 
-              FROM `{$wpdb->posts}` as p 
-              LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm 
-              ON (p.ID=pm.post_id AND pm.meta_key = 'mahak_id') 
-              WHERE p.post_type = 'shop_order' 
-              AND (pm.meta_key IS NULL)) s2 
+        FROM  `{$wpdb->posts}` AS posts
+        JOIN (SELECT p.ID, p.post_title
+              FROM `{$wpdb->posts}` as p
+              LEFT OUTER JOIN `{$wpdb->prefix}postmeta` pm
+              ON (p.ID=pm.post_id AND pm.meta_key = 'mahak_id')
+              WHERE p.post_type = 'shop_order'
+              AND (pm.meta_key IS NULL)) s2
         ON s2.ID = posts.ID
-        WHERE posts.post_type = 'shop_order' 
+        WHERE posts.post_type = 'shop_order'
         AND posts.post_status IN ('wc-completed', 'wc-processing', 'wc-processing5', 'wc-pws-packaged', 'wc-pws-shipping', 'wc-arrival-shipment')
         {$where}
         ORDER BY posts.ID ASC", $orderID); // تغییر به مرتب‌سازی صعودی ID
