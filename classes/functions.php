@@ -3219,7 +3219,7 @@ function bazara_run_product_synchronize()
 
         for ($i = 0; $i < count($entities); $i++) {
             $bazara->bazara_copy_entities($entities[$i], 0, 100000);
-            bazara_save_log(date_i18n('Y-m-j'),'در حال همگام سازی',json_encode($entities[$i]),'test');
+            // bazara_save_log(date_i18n('Y-m-j'),'در حال همگام سازی',json_encode($entities[$i]),'test');
         }
 
         bz_cleanup_duplicate_variations_from_report();
