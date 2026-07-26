@@ -3607,6 +3607,49 @@ function get_wp_roles()
         $wp_roles = new WP_Roles();
     return $wp_roles->get_names();
 }
+
+add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
+
+/*
+|--------------------------------------------------------------------------
+| کنترل موجودی واقعی پیش از نهایی‌شدن خرید
+|--------------------------------------------------------------------------
+| تغییرات موجودی محک فقط یک‌بار و به‌صورت افزایشی دریافت می‌شوند. سپس تمام
+| اقلام سبد با queryهای گروهی بررسی می‌شوند تا ضمن جلوگیری از فروش بیش‌ازحد،
+| زمان checkout با تعداد اقلام سبد رشد خطیِ query به‌ازای هر Detail نداشته باشد.
+*/
+function bazara_check_stock_realtime()
+{
+    if (!class_exists('BazaraApi') || !class_exists('Bazara_Stock_Guard')) {
+        return;
+    }
+
+    $woocommerce = WC();
+
+    if (!$woocommerce || !$woocommerce->cart) {
+        return;
+    }
+
+    global $wpdb;
+
+    $guard = new Bazara_Stock_Guard(new BazaraApi(true), $wpdb);
+    $errors = $guard->validate_cart($woocommerce->cart->get_cart());
+
+    foreach ($errors as $error) {
+        wc_add_notice(
+            sprintf(
+                __(
+                    'متأسفانه موجودی محصول «%1$s» برای تکمیل خرید کافی نیست. موجودی فعلی: %2$s',
+                    'bazara'
+                ),
+                $error['name'],
+                wc_format_decimal($error['available_stock'], 2)
+            ),
+            'error'
+        );
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | محاسبه تعداد کالاهای واصل‌نشده از سفارشات وردپرس
