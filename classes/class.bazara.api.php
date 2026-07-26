@@ -2290,177 +2290,177 @@ class BazaraApi
  * @param array $service_person
  * @return array
  */
-private function save_update_person($service_person) {
-    try {
+    private function save_update_person($service_person) {
+        try {
 
-        // اعتبارسنجی اولیه
-        if (empty($service_person['PersonId']) || empty($service_person['FirstName']) || empty($service_person['LastName'])) {
-            return ['success' => false, 'message' => __('فیلدهای ضروری وجود ندارند.', 'mahak-bazara')];
-        }
-
-        $person_id = $service_person['PersonId'];
-        $objPerson = $this->get_person_by_mahakID($person_id);
-
-        if (empty($objPerson) && !empty($service_person['Email'])) {
-            $objPerson = get_user_by('email', $service_person['Email']);
-        }
-
-        // تعیین نام کاربری
-        if (!empty($service_person['Email'])) {
-            $username = $service_person['Email'];
-        } elseif (!empty($service_person['Mobile'])) {
-            $username = $service_person['Mobile'];
-        } else {
-            return ['success' => false, 'message' => __('نام کاربری قابل ایجاد نیست.', 'mahak-bazara')];
-        }
-
-        // بررسی administrator بودن
-        $is_administrator = false;
-        if (!empty($objPerson)) {
-            $is_administrator = in_array('administrator', (array) $objPerson->roles, true);
-        }
-
-        // داده‌های کاربر
-        $userdata = [
-            'user_login'   => empty($objPerson) ? $username : $objPerson->user_login,
-            'display_name' => $service_person['FirstName'] . ' ' . $service_person['LastName'],
-            'user_email'   => $service_person['Email'] ?? '',
-            'first_name'   => $service_person['FirstName'],
-            'last_name'    => $service_person['LastName'],
-        ];
-
-        if (!empty($objPerson)) {
-            $userdata['ID'] = $objPerson->ID;
-        } else {
-            $userdata['user_pass'] = wp_generate_password(12, true);
-        }
-
-        // ایجاد یا بروزرسانی
-        $user_id = empty($objPerson) ? wp_insert_user($userdata) : wp_update_user($userdata);
-
-        if (is_wp_error($user_id)) {
-            return ['success' => false, 'message' => $user_id->get_error_message()];
-        }
-
-        // متادیتا
-        update_user_meta($user_id, 'mahak_id', $person_id);
-        update_user_meta($user_id, 'mahak_PersonCode', $service_person['PersonCode'] ?? '');
-        update_user_meta($user_id, 'mreeir_phone', $service_person['Mobile'] ?? '');
-
-        // موبایل بین‌المللی
-        if (!empty($service_person['Mobile']) && preg_match('/^0[0-9]{10}$/', $service_person['Mobile'])) {
-            $intl_mobile = substr_replace($service_person['Mobile'], '+98', 0, 1);
-            update_user_meta($user_id, 'digits_phone_no', $intl_mobile);
-            update_user_meta($user_id, 'digits_phone', $intl_mobile);
-        }
-
-        // اطلاعات صورتحساب
-        $billing_meta = [
-            'billing_first_name' => $service_person['FirstName'],
-            'billing_last_name'  => $service_person['LastName'],
-            'billing_address_1'  => $service_person['Address'] ?? '',
-            'billing_email'      => $service_person['Email'] ?? '',
-        ];
-        foreach ($billing_meta as $key => $val) {
-            if ($val !== null) {
-                update_user_meta($user_id, $key, $val);
-            }
-        }
-
-        // همگام‌سازی
-        update_person_sync($person_id);
-
-        /**
-         * مدیریت نقش‌ها (غیر administrator)
-         */
-        if (!$is_administrator) {
-            $user = new \WP_User($user_id);
-
-            // نقش دریافتی از سرویس
-            $desired_role_normalized = !empty($service_person['gName'])
-                ? $this->normalize_role_name($service_person['gName'])
-                : 'customer';
-
-            // نقش‌های وردپرس + نرمال‌سازی
-            $all_roles = $this->get_all_roles();
-            $normalized_roles = [];
-
-            foreach ($all_roles as $role) {
-                $normalized_roles[$this->normalize_role_name($role)] = $role;
+            // اعتبارسنجی اولیه
+            if (empty($service_person['PersonId']) || empty($service_person['FirstName']) || empty($service_person['LastName'])) {
+                return ['success' => false, 'message' => __('فیلدهای ضروری وجود ندارند.', 'mahak-bazara')];
             }
 
-            // تعیین نقش نهایی
-            if (isset($normalized_roles[$desired_role_normalized])) {
-                $role_to_assign = $normalized_roles[$desired_role_normalized];
+            $person_id = $service_person['PersonId'];
+            $objPerson = $this->get_person_by_mahakID($person_id);
+
+            if (empty($objPerson) && !empty($service_person['Email'])) {
+                $objPerson = get_user_by('email', $service_person['Email']);
+            }
+
+            // تعیین نام کاربری
+            if (!empty($service_person['Email'])) {
+                $username = $service_person['Email'];
+            } elseif (!empty($service_person['Mobile'])) {
+                $username = $service_person['Mobile'];
             } else {
-                $role_to_assign = 'customer';
+                return ['success' => false, 'message' => __('نام کاربری قابل ایجاد نیست.', 'mahak-bazara')];
             }
 
-            // حذف نقش‌های قبلی
-            foreach ($user->roles as $current_role) {
-                if ($current_role !== $role_to_assign) {
-                    $user->remove_role($current_role);
+            // بررسی administrator بودن
+            $is_administrator = false;
+            if (!empty($objPerson)) {
+                $is_administrator = in_array('administrator', (array) $objPerson->roles, true);
+            }
+
+            // داده‌های کاربر
+            $userdata = [
+                'user_login'   => empty($objPerson) ? $username : $objPerson->user_login,
+                'display_name' => $service_person['FirstName'] . ' ' . $service_person['LastName'],
+                'user_email'   => $service_person['Email'] ?? '',
+                'first_name'   => $service_person['FirstName'],
+                'last_name'    => $service_person['LastName'],
+            ];
+
+            if (!empty($objPerson)) {
+                $userdata['ID'] = $objPerson->ID;
+            } else {
+                $userdata['user_pass'] = wp_generate_password(12, true);
+            }
+
+            // ایجاد یا بروزرسانی
+            $user_id = empty($objPerson) ? wp_insert_user($userdata) : wp_update_user($userdata);
+
+            if (is_wp_error($user_id)) {
+                return ['success' => false, 'message' => $user_id->get_error_message()];
+            }
+
+            // متادیتا
+            update_user_meta($user_id, 'mahak_id', $person_id);
+            update_user_meta($user_id, 'mahak_PersonCode', $service_person['PersonCode'] ?? '');
+            update_user_meta($user_id, 'mreeir_phone', $service_person['Mobile'] ?? '');
+
+            // موبایل بین‌المللی
+            if (!empty($service_person['Mobile']) && preg_match('/^0[0-9]{10}$/', $service_person['Mobile'])) {
+                $intl_mobile = substr_replace($service_person['Mobile'], '+98', 0, 1);
+                update_user_meta($user_id, 'digits_phone_no', $intl_mobile);
+                update_user_meta($user_id, 'digits_phone', $intl_mobile);
+            }
+
+            // اطلاعات صورتحساب
+            $billing_meta = [
+                'billing_first_name' => $service_person['FirstName'],
+                'billing_last_name'  => $service_person['LastName'],
+                'billing_address_1'  => $service_person['Address'] ?? '',
+                'billing_email'      => $service_person['Email'] ?? '',
+            ];
+            foreach ($billing_meta as $key => $val) {
+                if ($val !== null) {
+                    update_user_meta($user_id, $key, $val);
                 }
             }
 
-            // افزودن نقش جدید
-            if (!in_array($role_to_assign, $user->roles, true)) {
-                $user->add_role($role_to_assign);
+            // همگام‌سازی
+            update_person_sync($person_id);
+
+            /**
+             * مدیریت نقش‌ها (غیر administrator)
+             */
+            if (!$is_administrator) {
+                $user = new \WP_User($user_id);
+
+                // نقش دریافتی از سرویس
+                $desired_role_normalized = !empty($service_person['gName'])
+                    ? $this->normalize_role_name($service_person['gName'])
+                    : 'customer';
+
+                // نقش‌های وردپرس + نرمال‌سازی
+                $all_roles = $this->get_all_roles();
+                $normalized_roles = [];
+
+                foreach ($all_roles as $role) {
+                    $normalized_roles[$this->normalize_role_name($role)] = $role;
+                }
+
+                // تعیین نقش نهایی
+                if (isset($normalized_roles[$desired_role_normalized])) {
+                    $role_to_assign = $normalized_roles[$desired_role_normalized];
+                } else {
+                    $role_to_assign = 'customer';
+                }
+
+                // حذف نقش‌های قبلی
+                foreach ($user->roles as $current_role) {
+                    if ($current_role !== $role_to_assign) {
+                        $user->remove_role($current_role);
+                    }
+                }
+
+                // افزودن نقش جدید
+                if (!in_array($role_to_assign, $user->roles, true)) {
+                    $user->add_role($role_to_assign);
+                }
             }
+
+            // ارسال ایمیل کاربر جدید
+            if (empty($objPerson) && !empty($service_person['Email'])) {
+                wp_new_user_notification($user_id, null, 'both');
+            }
+
+            return ['success' => true, 'message' => ''];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
         }
-
-        // ارسال ایمیل کاربر جدید
-        if (empty($objPerson) && !empty($service_person['Email'])) {
-            wp_new_user_notification($user_id, null, 'both');
-        }
-
-        return ['success' => true, 'message' => ''];
-
-    } catch (\Exception $e) {
-        return ['success' => false, 'message' => $e->getMessage()];
-    }
-}
-
-/**
- * نرمال‌سازی نام نقش فارسی برای تطبیق با slug نقش در وردپرس
- *
- * @param string $role_name نام نقش به صورت نمایشی (مثل "مشتریان سایت تک")
- * @return string slug نرمال‌شده نقش
- */
-private function normalize_role_name($role_name) {
-    if (empty($role_name)) {
-        return '';
     }
 
-    // تبدیل حروف عربی به فارسی
-    $role_name = str_replace(
-        ['ي', 'ك', 'ة', 'ۀ'],
-        ['ی', 'ک', 'ه', 'ه'],
-        $role_name
-    );
+    /**
+     * نرمال‌سازی نام نقش فارسی برای تطبیق با slug نقش در وردپرس
+     *
+     * @param string $role_name نام نقش به صورت نمایشی (مثل "مشتریان سایت تک")
+     * @return string slug نرمال‌شده نقش
+     */
+    private function normalize_role_name($role_name) {
+        if (empty($role_name)) {
+            return '';
+        }
 
-    // تبدیل فاصله و نیم‌فاصله به _
-    $role_name = str_replace([' ', '‌'], '_', $role_name);
+        // تبدیل حروف عربی به فارسی
+        $role_name = str_replace(
+            ['ي', 'ك', 'ة', 'ۀ'],
+            ['ی', 'ک', 'ه', 'ه'],
+            $role_name
+        );
 
-    // حذف کاراکترهای غیرمجاز
-    $role_name = preg_replace('/[^ا-یآ-ی0-9_a-zA-Z\-]/u', '_', $role_name);
+        // تبدیل فاصله و نیم‌فاصله به _
+        $role_name = str_replace([' ', '‌'], '_', $role_name);
 
-    // حذف _ اضافی
-    $role_name = preg_replace('/_+/', '_', $role_name);
-    $role_name = trim($role_name, '_');
+        // حذف کاراکترهای غیرمجاز
+        $role_name = preg_replace('/[^ا-یآ-ی0-9_a-zA-Z\-]/u', '_', $role_name);
 
-    return $role_name;
-}
+        // حذف _ اضافی
+        $role_name = preg_replace('/_+/', '_', $role_name);
+        $role_name = trim($role_name, '_');
 
-/**
- * تابع کمکی برای دریافت تمام نقش‌های معتبر وردپرس.
- *
- * @return array لیست نام‌های نقش‌ها.
- */
-private function get_all_roles() {
-    $roles = wp_roles()->get_names();
-    return array_keys($roles);
-}
+        return $role_name;
+    }
+
+    /**
+     * تابع کمکی برای دریافت تمام نقش‌های معتبر وردپرس.
+     *
+     * @return array لیست نام‌های نقش‌ها.
+     */
+    private function get_all_roles() {
+        $roles = wp_roles()->get_names();
+        return array_keys($roles);
+    }
     private function get_person_by_mahakID($mahak_id)
     {
         $users = get_users([
@@ -2919,21 +2919,21 @@ private function get_all_roles() {
             $total_amount = get_post_meta($order_id, '_order_total', true);
             $wallet = get_post_meta($order_id, '_payment_method', true) == 'wallet';
             $order_shipping_cost = get_post_meta($order_id, '_order_shipping', true);
-		} else {
-			//HPOS
-			$payment_meta = get_order_item_meta_payment_hpos($order_id);
-			$shipping_meta = get_order_item_shipping_amount_hpos($order_id);
-			$payment_method_value = (!empty($payment_meta) && isset($payment_meta->payment_method)) ? $payment_meta->payment_method : '';
-			$CodPaymentMethod = bazara_payment_method_is_cod($payment_method_value);
-			$total_amount = (!empty($payment_meta) && isset($payment_meta->total_amount)) ? $payment_meta->total_amount : 0;
-			$wallet = ($payment_method_value === 'wallet');
-			$order_shipping_cost = (!empty($shipping_meta) && isset($shipping_meta->cost)) ? $shipping_meta->cost : 0;
-		}
+        } else {
+            //HPOS
+            $payment_meta = get_order_item_meta_payment_hpos($order_id);
+            $shipping_meta = get_order_item_shipping_amount_hpos($order_id);
+            $payment_method_value = (!empty($payment_meta) && isset($payment_meta->payment_method)) ? $payment_meta->payment_method : '';
+            $CodPaymentMethod = bazara_payment_method_is_cod($payment_method_value);
+            $total_amount = (!empty($payment_meta) && isset($payment_meta->total_amount)) ? $payment_meta->total_amount : 0;
+            $wallet = ($payment_method_value === 'wallet');
+            $order_shipping_cost = (!empty($shipping_meta) && isset($shipping_meta->cost)) ? $shipping_meta->cost : 0;
+        }
  
         $completed_date = get_post_meta($order_id, '_paid_date', true);
-		if (empty($completed_date)) {
-			$completed_date = !empty($ps) && isset($ps->post_date) ? $ps->post_date : current_time('mysql');
-		}
+        if (empty($completed_date)) {
+            $completed_date = !empty($ps) && isset($ps->post_date) ? $ps->post_date : current_time('mysql');
+        }
 
         $completed_date = normalize_datetime_to_gregorian($completed_date);
         bazara_save_log(date_i18n('Y-m-j'), 'completed date', $completed_date, 'test');
@@ -3037,39 +3037,39 @@ private function get_all_roles() {
         // error_log('$cityName: ' . $cityName);
         // error_log('[BAZARA] $city = ' . print_r($city, true));
 
-		// استخراج CityId از نتیجه $city
-		$cityId = 0;
-		if (is_array($city) && !empty($city)) {
-			$firstCity = reset($city);
-			if (is_object($firstCity) && isset($firstCity->CityID)) {
-				$cityId = (int) $firstCity->CityID;
-			} elseif (is_array($firstCity) && isset($firstCity['CityID'])) {
-				$cityId = (int) $firstCity['CityID'];
-			}
-		}
+        // استخراج CityId از نتیجه $city
+        $cityId = 0;
+        if (is_array($city) && !empty($city)) {
+            $firstCity = reset($city);
+            if (is_object($firstCity) && isset($firstCity->CityID)) {
+                $cityId = (int) $firstCity->CityID;
+            } elseif (is_array($firstCity) && isset($firstCity['CityID'])) {
+                $cityId = (int) $firstCity['CityID'];
+            }
+        }
 
-		$shippingAddress = [
+        $shippingAddress = [
             'Title' => BAZARA_PERSON_ADDRESS_TITLE . ' - ' . $first_name . ' ' . $last_name,
             'Address' => $State . ' - ' . $cityName . ' - ' . $address,
             'PostalCode' => $postCode,
             'Tel' => $phone,
             'Mobile' => $user_person['mobile'],
-			'CityId' => $cityId,
+            'CityId' => $cityId,
             'Latitude' => 0,
             'Longitude' => 0
         ];
 
-		// error_log('[BAZARA] $shippingAddress = ' . print_r($shippingAddress, true));
+        // error_log('[BAZARA] $shippingAddress = ' . print_r($shippingAddress, true));
 
         $SoftwareCurrency = $options['selectCurrencySoftware'];
         $PluginCurrency = $options['selectCurrencyPlugin'];
         $serial = 0;
         $serialUsed = false;
 
-		foreach ($order->get_items() as $item_key => $item) {
-			$item_data = is_object($item) && method_exists($item, 'get_data') ? (array)$item->get_data() : [];
-			$item_name = isset($item_data['name']) ? $item_data['name'] : '';
-			if ($item_name == "Wallet Topup" && class_exists("bazaraTeraWallet")) {
+        foreach ($order->get_items() as $item_key => $item) {
+            $item_data = is_object($item) && method_exists($item, 'get_data') ? (array)$item->get_data() : [];
+            $item_name = isset($item_data['name']) ? $item_data['name'] : '';
+            if ($item_name == "Wallet Topup" && class_exists("bazaraTeraWallet")) {
                 if ($SoftwareCurrency == 'rial' && $PluginCurrency == 'toman') {
                     $total_amount *= 10;
                 } else if ($SoftwareCurrency == 'toman' && $PluginCurrency == 'rial') {
@@ -3560,11 +3560,11 @@ private function get_all_roles() {
         }
 
         // echo "<pre>";
-		// var_dump($product_orders['orderDetails']);
-		// var_dump($order->get_items());
-		// var_dump(count($order->get_items()));
-		// var_dump(count($product_orders['orderDetails']));
-		// die;
+        // var_dump($product_orders['orderDetails']);
+        // var_dump($order->get_items());
+        // var_dump(count($order->get_items()));
+        // var_dump(count($product_orders['orderDetails']));
+        // die;
 
         if (empty($product_orders['orderDetails'])) {
             echo 'سفارش دارای اقلام نمی باشد. احتمالا محصولات از سایت حذف شده اند.';
@@ -3605,40 +3605,40 @@ private function get_all_roles() {
             $product_detail_id = get_post_meta($product_id, 'mahak_product_detail_id', true);
             $diff_products = [];
 
-			foreach ($order_items_quantities as $product_id => $original_quantity) {
+            foreach ($order_items_quantities as $product_id => $original_quantity) {
 
-				$product_detail_id = get_post_meta($product_id, 'mahak_product_detail_id', true);
-				$system_quantity = $order_details_quantities[$product_detail_id] ?? 0;
+                $product_detail_id = get_post_meta($product_id, 'mahak_product_detail_id', true);
+                $system_quantity = $order_details_quantities[$product_detail_id] ?? 0;
 
-				if ($system_quantity != $original_quantity) {
+                if ($system_quantity != $original_quantity) {
 
-					$product = wc_get_product($product_id);
+                    $product = wc_get_product($product_id);
 
-					$diff_products[] = [
-						'product_id'        => $product_id,
-						'product_name'      => $product ? $product->get_name() : 'نامشخص',
-						'expected_quantity' => $original_quantity,
-						'system_quantity'   => $system_quantity,
-						'difference'        => $original_quantity - $system_quantity,
-						'product_detail_id' => $product_detail_id,
-					];
-				}
-			}
+                    $diff_products[] = [
+                        'product_id'        => $product_id,
+                        'product_name'      => $product ? $product->get_name() : 'نامشخص',
+                        'expected_quantity' => $original_quantity,
+                        'system_quantity'   => $system_quantity,
+                        'difference'        => $original_quantity - $system_quantity,
+                        'product_detail_id' => $product_detail_id,
+                    ];
+                }
+            }
 
         }
 
-		if (!empty($diff_products)) {
-			error_log('Bazara Quantity Mismatch: ' . print_r($diff_products, true));
-		}
+        if (!empty($diff_products)) {
+            error_log('Bazara Quantity Mismatch: ' . print_r($diff_products, true));
+        }
 
-		if (!empty($diff_products)) {
-			echo 'تعداد خریداری شده محصول با تعداد ثبت شده در سیستم مغایرت دارد';
-			return [
-				'success' => false,
-				'message' => 'مغایرت تعداد در محصولات زیر وجود دارد',
-				'details' => $diff_products
-			];
-		}
+        if (!empty($diff_products)) {
+            echo 'تعداد خریداری شده محصول با تعداد ثبت شده در سیستم مغایرت دارد';
+            return [
+                'success' => false,
+                'message' => 'مغایرت تعداد در محصولات زیر وجود دارد',
+                'details' => $diff_products
+            ];
+        }
 
         if ($SoftwareCurrency == 'rial' && $PluginCurrency == 'toman') {
 
@@ -3808,15 +3808,15 @@ private function get_all_roles() {
             $metaMethod = get_order_item_meta_payment_hpos($orderid)->payment_method;
         }
 
-		$banks = json_decode(stripslashes(isset($options['banksMethods']) ? $options['banksMethods'] : ''), true);
+        $banks = json_decode(stripslashes(isset($options['banksMethods']) ? $options['banksMethods'] : ''), true);
         if (empty($banks))
             return false;
         foreach ($banks as $bank) {
 
-			$bank_method = isset($bank['method']) ? $bank['method'] : null;
-			$bank_name = isset($bank['name']) ? $bank['name'] : null;
-			if ($bank_method !== null && in_array($bank_method, [$payment_method, $metaMethod]))
-				return $bank_name;
+            $bank_method = isset($bank['method']) ? $bank['method'] : null;
+            $bank_name = isset($bank['name']) ? $bank['name'] : null;
+            if ($bank_method !== null && in_array($bank_method, [$payment_method, $metaMethod]))
+                return $bank_name;
         }
         return false;
     }
@@ -4090,150 +4090,150 @@ private function get_all_roles() {
         return ['success' => true, 'message' => ''];
     }
     
-/**
- * سینک جداگانه Persons 
- * (VisitorPersons پردازش نمی‌شود - فقط نسخه آن ارسال می‌شود)
- */
-private function sync_combined_persons($token, $min = 0, $max = 20)
-{
-    // دریافت آخرین نسخه‌ها
-    $person_latest_rv        = get_last_row_version("Persons") ?: 0;
-    $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
+    /**
+     * سینک جداگانه Persons
+     * (VisitorPersons پردازش نمی‌شود - فقط نسخه آن ارسال می‌شود)
+     */
+    private function sync_combined_persons($token, $min = 0, $max = 20)
+    {
+        // دریافت آخرین نسخه‌ها
+        $person_latest_rv        = get_last_row_version("Persons") ?: 0;
+        $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
 
-    // آماده‌سازی داده برای API - هر دو نسخه ارسال می‌شود
-    $data = [
-        "fromPersonVersion"       => $person_latest_rv,
-        "fromVisitorPersonVersion"=> $visitorPerson_latest_rv,
-    ];
+        // آماده‌سازی داده برای API - هر دو نسخه ارسال می‌شود
+        $data = [
+            "fromPersonVersion"       => $person_latest_rv,
+            "fromVisitorPersonVersion"=> $visitorPerson_latest_rv,
+        ];
 
-    // دریافت داده از سرور
-    $result = $this->get_all_data($token, $data);
+        // دریافت داده از سرور
+        $result = $this->get_all_data($token, $data);
 
-    if (!$result['success']) {
-        return ['count' => 0, 'error' => $result['message'], 'success' => false];
-    }
-
-    $processedPersons = 0;
-    $batchSize = $max;
-
-    // ==================== پردازش اشخاص ====================
-    if (!empty($result['message']['People'])) {
-        $Peoples = $result['message']['People'];
-
-        // مرتب‌سازی بر اساس RowVersion
-        usort($Peoples, function ($a, $b) {
-            return $a['RowVersion'] <=> $b['RowVersion'];
-        });
-
-        foreach ($Peoples as $People) {
-            if ($processedPersons >= $batchSize) {
-                break;
-            }
-
-            $processedPersons++;
-
-            $person_items = [
-                'PersonId'       => $People['PersonId'],
-                'PersonClientId' => $People['PersonClientId'] ?? null,
-                'PersonGroupId'  => $People['PersonGroupId'] ?? null,
-                'PersonCode'     => $People['PersonCode'] ?? null,
-                'FirstName'      => $People['FirstName'] ?? '',
-                'LastName'       => $People['LastName'] ?? '',
-                'Email'          => $People['Email'] ?? null,
-                'Deleted'        => ($People['Deleted'] == 'true' ? 1 : 0),
-                'RowVersion'     => $People['RowVersion'],
-                'isSync'         => 0,
-                'Mobile'         => $People['Mobile'] ?? null,
-                'Address'        => $People['Address'] ?? null,
-            ];
-
-            // درج رکورد
-            insert('bazara_persons', $person_items, 'PersonId', $People['PersonId']);
-
-            // به‌روزرسانی نسخه
-            bazara_update_latest_versions('persons', $People['RowVersion']);
+        if (!$result['success']) {
+            return ['count' => 0, 'error' => $result['message'], 'success' => false];
         }
-    }
 
-    // لاگ برای دیباگ
-    if ($processedPersons > 0) {
-        error_log("Synced {$processedPersons} Persons successfully. Last RowVersion updated.");
-    }
+        $processedPersons = 0;
+        $batchSize = $max;
 
-    return [
-        'success' => true,
-        'count'   => $processedPersons,
-        'message' => "{$processedPersons} person(s) processed successfully."
-    ];
-}
+        // ==================== پردازش اشخاص ====================
+        if (!empty($result['message']['People'])) {
+            $Peoples = $result['message']['People'];
+
+            // مرتب‌سازی بر اساس RowVersion
+            usort($Peoples, function ($a, $b) {
+                return $a['RowVersion'] <=> $b['RowVersion'];
+            });
+
+            foreach ($Peoples as $People) {
+                if ($processedPersons >= $batchSize) {
+                    break;
+                }
+
+                $processedPersons++;
+
+                $person_items = [
+                    'PersonId'       => $People['PersonId'],
+                    'PersonClientId' => $People['PersonClientId'] ?? null,
+                    'PersonGroupId'  => $People['PersonGroupId'] ?? null,
+                    'PersonCode'     => $People['PersonCode'] ?? null,
+                    'FirstName'      => $People['FirstName'] ?? '',
+                    'LastName'       => $People['LastName'] ?? '',
+                    'Email'          => $People['Email'] ?? null,
+                    'Deleted'        => ($People['Deleted'] == 'true' ? 1 : 0),
+                    'RowVersion'     => $People['RowVersion'],
+                    'isSync'         => 0,
+                    'Mobile'         => $People['Mobile'] ?? null,
+                    'Address'        => $People['Address'] ?? null,
+                ];
+
+                // درج رکورد
+                insert('bazara_persons', $person_items, 'PersonId', $People['PersonId']);
+
+                // به‌روزرسانی نسخه
+                bazara_update_latest_versions('persons', $People['RowVersion']);
+            }
+        }
+
+        // لاگ برای دیباگ
+        if ($processedPersons > 0) {
+            error_log("Synced {$processedPersons} Persons successfully. Last RowVersion updated.");
+        }
+
+        return [
+            'success' => true,
+            'count'   => $processedPersons,
+            'message' => "{$processedPersons} person(s) processed successfully."
+        ];
+    }
     
     /**
  * سینک جداگانه VisitorPersons
  */
-private function sync_visitor_persons($token, $min = 0, $max = 20)
-{
-    // دریافت آخرین نسخه‌ها
-    $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
+    private function sync_visitor_persons($token, $min = 0, $max = 20)
+    {
+        // دریافت آخرین نسخه‌ها
+        $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
 
-    // آماده‌سازی داده برای API
-    $data = [
-        "fromVisitorPersonVersion" => $visitorPerson_latest_rv,
-        // اگر نیاز به ارسال fromPersonVersion هم هست، می‌توانی اضافه کنی
-        // "fromPersonVersion" => get_last_row_version("Persons") ?: 0,
-    ];
+        // آماده‌سازی داده برای API
+        $data = [
+            "fromVisitorPersonVersion" => $visitorPerson_latest_rv,
+            // اگر نیاز به ارسال fromPersonVersion هم هست، می‌توانی اضافه کنی
+            // "fromPersonVersion" => get_last_row_version("Persons") ?: 0,
+        ];
 
-    // دریافت داده از سرور
-    $result = $this->get_all_data($token, $data);
+        // دریافت داده از سرور
+        $result = $this->get_all_data($token, $data);
 
-    if (!$result['success']) {
-        return ['count' => 0, 'error' => $result['message'], 'success' => false];
-    }
-
-    $processedCount = 0;
-    $batchSize = $max;
-
-    // ==================== پردازش اشخاص ویزیتور ====================
-    if (!empty($result['message']['VisitorPeople'])) {   // <<< مهم: نام کلید را چک کن
-        $VisitorPersons = $result['message']['VisitorPeople'];
-
-        // مرتب‌سازی بر اساس RowVersion
-        usort($VisitorPersons, function ($a, $b) {
-            return $a['RowVersion'] <=> $b['RowVersion'];
-        });
-
-        foreach ($VisitorPersons as $visitorPerson) {
-            if ($processedCount >= $batchSize) {
-                break;
-            }
-
-            $processedCount++;
-
-            $visitor_items = [
-                'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
-                'PersonId'        => $visitorPerson['PersonId'] ?? null,
-                'VisitorId'       => $visitorPerson['VisitorId'] ?? null,
-                'Deleted'         => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
-                'RowVersion'      => $visitorPerson['RowVersion'],
-                // سایر فیلدهای مورد نیاز را اینجا اضافه کنید
-            ];
-
-            // درج در جدول
-            insert('bazara_visitor_persons', $visitor_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
-
-            // به‌روزرسانی آخرین نسخه
-            bazara_update_latest_versions('VisitorPersons', $visitorPerson['RowVersion']);
+        if (!$result['success']) {
+            return ['count' => 0, 'error' => $result['message'], 'success' => false];
         }
-    }
 
-    // لاگ برای دیباگ
-    if ($processedCount > 0) {
-        error_log("Synced {$processedCount} VisitorPersons successfully.");
-    }
+        $processedCount = 0;
+        $batchSize = $max;
 
-    return [
-        'success' => true,
-        'count'   => $processedCount,
-        'message' => "{$processedCount} visitor person(s) processed successfully."
-    ];
-}
+        // ==================== پردازش اشخاص ویزیتور ====================
+        if (!empty($result['message']['VisitorPeople'])) {   // <<< مهم: نام کلید را چک کن
+            $VisitorPersons = $result['message']['VisitorPeople'];
+
+            // مرتب‌سازی بر اساس RowVersion
+            usort($VisitorPersons, function ($a, $b) {
+                return $a['RowVersion'] <=> $b['RowVersion'];
+            });
+
+            foreach ($VisitorPersons as $visitorPerson) {
+                if ($processedCount >= $batchSize) {
+                    break;
+                }
+
+                $processedCount++;
+
+                $visitor_items = [
+                    'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
+                    'PersonId'        => $visitorPerson['PersonId'] ?? null,
+                    'VisitorId'       => $visitorPerson['VisitorId'] ?? null,
+                    'Deleted'         => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
+                    'RowVersion'      => $visitorPerson['RowVersion'],
+                    // سایر فیلدهای مورد نیاز را اینجا اضافه کنید
+                ];
+
+                // درج در جدول
+                insert('bazara_visitor_persons', $visitor_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
+
+                // به‌روزرسانی آخرین نسخه
+                bazara_update_latest_versions('VisitorPersons', $visitorPerson['RowVersion']);
+            }
+        }
+
+        // لاگ برای دیباگ
+        if ($processedCount > 0) {
+            error_log("Synced {$processedCount} VisitorPersons successfully.");
+        }
+
+        return [
+            'success' => true,
+            'count'   => $processedCount,
+            'message' => "{$processedCount} visitor person(s) processed successfully."
+        ];
+    }
 }
