@@ -48,6 +48,7 @@ function bazara_settings_visitor()
         'chkPicture'         => true,
         'chkTitle'           => true,
         'chkQuantity'        => true,
+        'chkRealtimeStockGuard' => true,
         'chkPrice'           => true,
         'chkOrder'           => true,
         'chkRadioGroup'      => true,
@@ -998,6 +999,9 @@ function bazara_convert_request_to_options($hasRequest = false)
         'chkPicture'        => toggle_to_boolean(sanitize_text_field($_REQUEST['chkUploadPics'] ?? '')),
         'chkTitle'          => toggle_to_boolean(sanitize_text_field($_REQUEST['chkTitle'] ?? '')),
         'chkQuantity'       => toggle_to_boolean(sanitize_text_field($_REQUEST['chkQuantity'] ?? '')),
+        'chkRealtimeStockGuard' => toggle_to_boolean(
+            sanitize_text_field($_REQUEST['bazara_realtime_stock_guard'] ?? '')
+        ),
         'chkPrice'          => toggle_to_boolean(sanitize_text_field($_REQUEST['chkPrice'] ?? '')),
         'chkExcludedProductsByCategory' => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_except_category'] ?? '')),
         'ExcludedProductsByCategory'    => sanitize_text_field($_REQUEST['ExcludedProductsByCategory'] ?? ''),
@@ -3608,7 +3612,24 @@ function get_wp_roles()
     return $wp_roles->get_names();
 }
 
-add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
+if (bazara_stock_guard_is_enabled()) {
+    add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
+}
+
+/**
+ * برای نصب‌های قبلی که هنوز کلید تنظیمات را ندارند، رفتار محافظه‌کارانه و
+ * سازگار با قابلیت قدیمی، فعال‌بودن Stock Guard است.
+ */
+function bazara_stock_guard_is_enabled()
+{
+    $settings = get_bazara_visitor_settings();
+
+    if (!array_key_exists('chkRealtimeStockGuard', $settings)) {
+        return true;
+    }
+
+    return !empty($settings['chkRealtimeStockGuard']);
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -3620,6 +3641,10 @@ add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
 */
 function bazara_check_stock_realtime()
 {
+    if (!bazara_stock_guard_is_enabled()) {
+        return;
+    }
+
     if (!class_exists('BazaraApi') || !class_exists('Bazara_Stock_Guard')) {
         return;
     }
