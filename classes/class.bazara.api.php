@@ -711,7 +711,7 @@ class BazaraApi
     {
         $data = [
             'fromStoreVersion' => 0
-        ]; //fetch all products
+        ]; // دریافت همه محصولات
         $product_result = $this->get_all_data($token, $data);
         $StoreID = 0;
         if (!$product_result['success'])
@@ -1178,7 +1178,7 @@ class BazaraApi
             $token = $token_result['message'];
         }
 
-        // Handle combined product sync
+        // اجرای همگام‌سازی ترکیبی محصولات
         if ($type === 'ProductSync') {
             return $this->sync_combined_products($token, $min, $max);
         }
@@ -1202,7 +1202,7 @@ class BazaraApi
 
         $data = [
             "{$this->entities[$type]['entity']}" => empty($latest_rowVersion) ? 0 : ($latest_rowVersion)
-        ]; //fetch all products
+        ]; // دریافت همه محصولات
 
 
 
@@ -2229,7 +2229,7 @@ class BazaraApi
             $token = $token_result['message'];
         }
 
-        $data = ['fromPersonGroupVersion' => 0]; //fetch all products
+        $data = ['fromPersonGroupVersion' => 0]; // دریافت همه محصولات
         $groups_result = $this->get_all_data($token, $data);
 
         $role_groups = json_decode(json_encode($groups_result['message']), true)['PersonGroups'];
@@ -3037,7 +3037,7 @@ private function get_all_roles() {
         // error_log('$cityName: ' . $cityName);
         // error_log('[BAZARA] $city = ' . print_r($city, true));
 
-		// Derive CityId from $city result
+		// استخراج CityId از نتیجه $city
 		$cityId = 0;
 		if (is_array($city) && !empty($city)) {
 			$firstCity = reset($city);
@@ -3246,7 +3246,7 @@ private function get_all_roles() {
             
                 $among = $quantity;
                 
-                // Initialize orderDetails array if class exists (though this condition is redundant due to outer check)
+                // مقداردهی orderDetails در صورت وجود کلاس (این شرط با بررسی بیرونی تکراری است)
                 if (class_exists("sell_simple_with_date_variants")) {
                     $product_orders['orderDetails'] = [];
                 }
@@ -4116,7 +4116,7 @@ private function sync_combined_persons($token, $min = 0, $max = 20)
     $processedPersons = 0;
     $batchSize = $max;
 
-    // ==================== Process Persons فقط ====================
+    // ==================== پردازش اشخاص ====================
     if (!empty($result['message']['People'])) {
         $Peoples = $result['message']['People'];
 
@@ -4192,7 +4192,7 @@ private function sync_visitor_persons($token, $min = 0, $max = 20)
     $processedCount = 0;
     $batchSize = $max;
 
-    // ==================== Process VisitorPersons ====================
+    // ==================== پردازش اشخاص ویزیتور ====================
     if (!empty($result['message']['VisitorPeople'])) {   // <<< مهم: نام کلید را چک کن
         $VisitorPersons = $result['message']['VisitorPeople'];
 
