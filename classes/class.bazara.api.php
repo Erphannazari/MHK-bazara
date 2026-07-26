@@ -350,8 +350,8 @@ class BazaraApi
 
                     if (!$category_exist) {
                         $term_id = wp_insert_term(
-                            $cat['Name'], // the term
-                            'product_cat', // the taxonomy
+                            $cat['Name'], // نام دسته
+                            'product_cat', // نام طبقه‌بندی
                             array(
                                 'parent' => 0,
                                 'slug' => $cat['Name']
@@ -418,8 +418,8 @@ class BazaraApi
                     //if (!$term){
 
                     $term_id = wp_insert_term(
-                        $data['CategoryName'], // the term
-                        'product_cat', // the taxonomy
+                        $data['CategoryName'], // نام دسته
+                        'product_cat', // نام طبقه‌بندی
                         array(
                             'parent' => $parent_term_a_id,
                         )
@@ -704,7 +704,7 @@ class BazaraApi
             $errors = 0;
             $ProductArray = [];
             
-            // If selected_ids is provided, only get those products
+            // در صورت ارسال selected_ids، فقط همان محصولات دریافت می‌شوند
             if ($selected_ids !== null) {
                 $products = get_products_v3(false, $min, $max, $schd, $selected_ids);
             } else {
@@ -2506,7 +2506,7 @@ private function get_all_roles() {
     public function register_users($token, $personGroup, $user)
     {
         $datas = array();
-        // Normalize $user: accept WP_User or array with first element
+        // نرمال‌سازی $user: پذیرش WP_User یا آرایه‌ای با اولین عضو
         if (is_array($user)) {
             $user = reset($user);
         }
@@ -2818,7 +2818,7 @@ private function get_all_roles() {
 
 
         $order_customer = get_userdata($order_customer_id);
-        // Initialize with safe defaults
+        // مقداردهی اولیه با مقادیر پیش‌فرض امن
         $user_person = array('mobile' => '', 'personId' => 0);
         $mahakID = 0;
         if (!empty($order_customer) && is_object($order_customer) && !empty($order_customer->ID)) {
@@ -3187,7 +3187,7 @@ private function get_all_roles() {
                     if (!empty($storeAsset)) {
                         $Store_Id = $store;
             
-                        // Case 1: Store has enough stock to fulfill the entire quantity
+                        // حالت ۱: انبار موجودی کافی برای تأمین کل تعداد دارد
                         if ($storeAsset->Count1 >= $among) {
                             $product_orders['orderDetails'][] = array(
                                 'orderClientId' => $orderClientID,
@@ -3210,7 +3210,7 @@ private function get_all_roles() {
                             );
                             break;
                         } 
-                        // Case 2: Store has some stock but less than required
+                        // حالت ۲: انبار مقداری موجودی دارد، اما کمتر از مقدار لازم است
                         elseif ($storeAsset->Count1 > 0 && $storeAsset->Count1 < $among) {
                             $product_orders['orderDetails'][] = array(
                                 'orderClientId' => $orderClientID,
@@ -3234,7 +3234,7 @@ private function get_all_roles() {
                             $among -= $storeAsset->Count1;
                             continue;
                         } 
-                        // Case 3: Store has no stock
+                        // حالت ۳: انبار موجودی ندارد
                         elseif ($storeAsset->Count1 == 0) {
                             continue;
                         }
@@ -3265,7 +3265,7 @@ private function get_all_roles() {
                 );
             }
             
-            // Handle product serials
+            // پردازش سریال‌های محصول
             if (!empty($getProductSerials) && !class_exists("sell_simple_with_date_variants") && is_array($getProductSerials) && ($quantity - 1) > 0) {
                 //var_dump('3');
             
@@ -3300,7 +3300,7 @@ private function get_all_roles() {
                 bazara_update_client_id('order_detail', $orderDetailClientID);
             }
             
-            // Handle case with sell_simple_with_date_variants and product serials
+            // پردازش حالت sell_simple_with_date_variants همراه با سریال‌های محصول
             if (class_exists("sell_simple_with_date_variants") && is_array($getProductSerials)) {
                 //var_dump('5');
             
@@ -3311,7 +3311,7 @@ private function get_all_roles() {
                     $storeAsset = get_product_assets($pdt['detail_id'], $Store_Id)[0];
             
                     if (!empty($storeAsset)) {
-                        // Case 1: Store has enough stock
+                        // حالت ۱: انبار موجودی کافی دارد
                         if ($storeAsset->Count1 >= $among) {
                             $product_orders['orderDetails'][] = array(
                                 'orderClientId' => $orderClientID,
@@ -3334,7 +3334,7 @@ private function get_all_roles() {
                             );
                             break;
                         } 
-                        // Case 2: Store has some stock but less than required
+                        // حالت ۲: انبار مقداری موجودی دارد، اما کمتر از مقدار لازم است
                         elseif ($storeAsset->Count1 > 0 && $storeAsset->Count1 < $among) {
                             $product_orders['orderDetails'][] = array(
                                 'orderClientId' => $orderClientID,
@@ -3761,7 +3761,7 @@ private function get_all_roles() {
             $error = json_decode($error, true);
         }
     
-        // Check cheque result
+        // بررسی نتیجه چک
         if (
             isset($error['Data']['Objects']['Cheques']['Results'][0])
         ) {
@@ -3773,7 +3773,7 @@ private function get_all_roles() {
             bazara_update_client_id('cheque', $cheqid);
         }
     
-        // Check order detail result
+        // بررسی نتیجه جزئیات سفارش
         if (
             isset($error['Data']['Objects']['OrderDetails']['Results'][0])
         ) {
@@ -3785,7 +3785,7 @@ private function get_all_roles() {
             bazara_update_client_id('order_detail', $orderDetailID);
         }
     
-        // Check order result
+        // بررسی نتیجه سفارش
         if (
             isset($error['Data']['Objects']['Orders']['Results'][0])
         ) {
@@ -3837,12 +3837,12 @@ private function get_all_roles() {
 
     private function sync_combined_products($token, $min = 0, $max = 20)
     {
-        // Get latest versions for all related entities
+        // دریافت آخرین نسخه تمام موجودیت‌های مرتبط
         $product_latest_rv = empty(get_last_row_version("product")) ? 0 : (get_last_row_version("product"));
         $productDetail_latest_rv = empty(get_last_row_version("productDetail")) ? 0 : (get_last_row_version("productDetail"));
         $visitorProducts_latest_rv = empty(get_last_row_version("VisitorProducts")) ? 0 : (get_last_row_version("VisitorProducts"));
 
-        // Prepare combined data
+        // آماده‌سازی داده‌های ترکیبی
         $data = array(
             "fromProductVersion" => $product_latest_rv,
             "fromProductDetailVersion" => $productDetail_latest_rv,
@@ -3860,7 +3860,7 @@ private function get_all_roles() {
             return false;
         }
 
-        // Get tax and charge percent from settings
+        // دریافت درصد مالیات و عوارض از تنظیمات
         $ChargePercent = 0;
         $TaxPercent = 0;
         $visitorSettings = get_option('bazara_visitor_soft_settings', true);
@@ -3875,7 +3875,7 @@ private function get_all_roles() {
             }
         }
 
-        // Process Products
+        // پردازش محصولات
         if (!empty($product_result['message']['Products'])) {
 
             $Products = $product_result['message']['Products'];
@@ -3944,7 +3944,7 @@ private function get_all_roles() {
         }
 
 
-        // Process ProductDetails
+        // پردازش جزئیات محصولات
         if (!empty($product_result['message']['ProductDetails'])) {
             $ProductDetails = $product_result['message']['ProductDetails'];
             usort($ProductDetails, function ($item1, $item2) {
@@ -3989,7 +3989,7 @@ private function get_all_roles() {
             }
         }
 
-        // Process VisitorProducts
+        // پردازش محصولات ویزیتور
         if (!empty($product_result['message']['VisitorProducts'])) {
             $VisitorProducts = $product_result['message']['VisitorProducts'];
             usort($VisitorProducts, function ($item1, $item2) {
