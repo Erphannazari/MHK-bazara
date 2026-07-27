@@ -131,7 +131,10 @@ class Bazara_Settings_Reports_Table extends WP_List_Table {
 
 
             $bazara = new BazaraApi(true);
-            $message = $bazara->start_sync_new_product(0, 100000, true)['message'];
+            $sync_opts = bazara_get_options();
+            $sync_min_val = isset($sync_opts['sync_min']) ? intval($sync_opts['sync_min']) : 0;
+            $sync_max_val = isset($sync_opts['sync_max']) ? intval($sync_opts['sync_max']) : 100000;
+            $message = $bazara->start_sync_new_product($sync_min_val, $sync_max_val, true)['message'];
             // esc_url_raw() is used to prevent converting ampersand in url to "#038;"
             // add_query_arg() return the current url
             wp_redirect( esc_url_raw(add_query_arg()) );
