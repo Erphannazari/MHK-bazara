@@ -45,3 +45,9 @@ debug.log
 
 #docs
 docs/
+issues/
+code-review-reports/
+
+
+#agents
+.mimocode/
