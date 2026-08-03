@@ -36,39 +36,46 @@ class BazaraApi
         $this->repair = $this->base_url . "/SolveDispute";
         $this->repairOrders = $this->base_url . "/SolveOrderDispute";
 
-        $this->entities = array(
-            'PersonGroups' => array('entity' => 'fromPersonGroupVersion', 'alias' => 'PersonGroup'),
-            'PropertyDescriptions' => array('entity' => 'fromPropertyDescriptionVersion', 'alias' => 'PropertyDescriptions'),
-            'Stores' => array('entity' => 'fromStoreVersion', 'alias' => 'Stores'),
-            'ExtraDatas' => array('entity' => 'fromExtraDataVersion', 'alias' => 'ExtraData'),
-            'Regions' => array('entity' => 'fromRegionVersion', 'alias' => 'Regions'),
-            'Products' => array('entity' => 'fromProductVersion', 'alias' => 'product'),
-            'Settings' => array('entity' => 'fromSettingVersion', 'alias' => 'Settings'),
-            'ProductDetails' => array('entity' => 'fromProductDetailVersion', 'alias' => 'productDetail'),
-            'ProductDetailStoreAssets' => array('entity' => 'fromProductDetailStoreAssetVersion', 'alias' => 'ProductAsset'),
-            'VisitorProducts' => array('entity' => 'fromVisitorProductVersion', 'alias' => 'VisitorProducts'),
-            'Pictures' => array('entity' => 'fromPictureVersion', 'alias' => 'Pictures'),
-            'PhotoGalleries' => array('entity' => 'fromPhotoGalleryVersion', 'alias' => 'PhotoGalleries'),
-            'Banks' => array('entity' => 'fromBankVersion', 'alias' => 'Banks'),
-            'Persons' => array('entity' => 'fromPersonVersion', 'alias' => 'Persons'),
-            'VisitorPersons' => array('entity' => 'fromVisitorPersonVersion', 'alias' => 'VisitorPersons'),
-            'SubCategory' => array('entity' => 'fromProductCategoryVersion', 'alias' => 'SubCategory'),
-            'Transactions' => array('entity' => 'fromtransactionversion', 'alias' => 'Transactions'),
-            'Orders' => array('entity' => 'fromOrderVersion', 'alias' => 'Orders'),
-            'OrderDetails' => array('entity' => 'fromOrderDetailVersion', 'alias' => 'OrderDetails'),
+        $this->entities = [
+            'PersonGroups' => ['entity' => 'fromPersonGroupVersion', 'alias' => 'PersonGroup'],
+            'PropertyDescriptions' => ['entity' => 'fromPropertyDescriptionVersion', 'alias' => 'PropertyDescriptions'],
+            'Stores' => ['entity' => 'fromStoreVersion', 'alias' => 'Stores'],
+            'ExtraDatas' => ['entity' => 'fromExtraDataVersion', 'alias' => 'ExtraData'],
+            'Regions' => ['entity' => 'fromRegionVersion', 'alias' => 'Regions'],
+            'Products' => ['entity' => 'fromProductVersion', 'alias' => 'product'],
+            'Settings' => ['entity' => 'fromSettingVersion', 'alias' => 'Settings'],
+            'ProductDetails' => ['entity' => 'fromProductDetailVersion', 'alias' => 'productDetail'],
+            'ProductDetailStoreAssets' => ['entity' => 'fromProductDetailStoreAssetVersion', 'alias' => 'ProductAsset'],
+            'VisitorProducts' => ['entity' => 'fromVisitorProductVersion', 'alias' => 'VisitorProducts'],
+            'Pictures' => ['entity' => 'fromPictureVersion', 'alias' => 'Pictures'],
+            'PhotoGalleries' => ['entity' => 'fromPhotoGalleryVersion', 'alias' => 'PhotoGalleries'],
+            'Banks' => ['entity' => 'fromBankVersion', 'alias' => 'Banks'],
+            'Persons' => ['entity' => 'fromPersonVersion', 'alias' => 'Persons'],
+            'VisitorPersons' => ['entity' => 'fromVisitorPersonVersion', 'alias' => 'VisitorPersons'],
+            'SubCategory' => ['entity' => 'fromProductCategoryVersion', 'alias' => 'SubCategory'],
+            'Transactions' => ['entity' => 'fromtransactionversion', 'alias' => 'Transactions'],
+            'Orders' => ['entity' => 'fromOrderVersion', 'alias' => 'Orders'],
+            'OrderDetails' => ['entity' => 'fromOrderDetailVersion', 'alias' => 'OrderDetails'],
 
-        );
+        ];
     }
-    public function get_all_data($token = '', $input = array())
+    /*
+    |--------------------------------------------------------------------------
+    | دریافت داده‌های همگام‌سازی از API بازارا
+    |--------------------------------------------------------------------------
+    | توکن را در صورت نیاز دریافت می‌کند، درخواست را به API می‌فرستد و ساختار
+    | پاسخ را پیش از بازگرداندن Objects اعتبارسنجی و خطاها را لاگ می‌کند.
+    */
+    public function get_all_data($token = '', $input = [])
     {
         // 1) دریافت توکن در صورت خالی بودن
         if (empty($token)) {
             $token_result = $this->login_token();
             if (empty($token_result['success']) || !$token_result['success']) {
-                return array(
+                return [
                     'success' => false,
                     'message' => $token_result['message'] ?? 'Token error'
-                );
+                ];
             }
             $token = $token_result['message'];
         }
@@ -111,10 +118,10 @@ class BazaraApi
                 'Error',
                 $response
             );
-            return array(
+            return [
                 'success' => false,
                 'message' => 'Invalid API response format'
-            );
+            ];
         }
     
         // 4) وجود نداشتن کلید Result
@@ -124,10 +131,10 @@ class BazaraApi
                 'Error',
                 json_encode($decoded)
             );
-            return array(
+            return [
                 'success' => false,
                 'message' => 'Missing Result key in API response'
-            );
+            ];
         }
     
         // 5) اگر API خطا برگرداند
@@ -137,10 +144,10 @@ class BazaraApi
                 'Error',
                 json_encode($decoded)
             );
-            return array(
+            return [
                 'success' => false,
                 'message' => json_encode($decoded)
-            );
+            ];
         }
     
         // 6) بررسی وجود Data → Objects
@@ -150,24 +157,24 @@ class BazaraApi
                 'Error',
                 json_encode($decoded)
             );
-            return array(
+            return [
                 'success' => false,
                 'message' => 'Objects not found in API response'
-            );
+            ];
         }
     
         // 7) موفقیت کامل
-        return array(
+        return [
             'success' => true,
             'message' => $decoded['Data']['Objects']
-        );
+        ];
     }    
-    public function repair_entities($token = '', $url = '', $input = array())
+    public function repair_entities($token = '', $url = '', $input = [])
     {
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
         $result = $this->http_post($url, $input, $token);
@@ -175,71 +182,78 @@ class BazaraApi
 
         if (!$result['Result']) {
             Bz_Import_Export_For_Woo_Basic_Logwriter::write_log('خطا در ارسال اطلاعات', 'Error ', json_encode($result));
-            return array('success' => false, 'message' => json_encode($result));
+            return ['success' => false, 'message' => json_encode($result)];
         }
 
-        return json_encode(array('success' => true, 'message' => $result['Result'], 'data' => $result));
+        return json_encode(['success' => true, 'message' => $result['Result'], 'data' => $result]);
     }
+    /*
+    |--------------------------------------------------------------------------
+    | رفع مغایرت داده‌های محلی با سرور
+    |--------------------------------------------------------------------------
+    | ردیف‌های جداول همگام‌سازی را جمع‌آوری کرده و برای هر موجودیت درخواست
+    | رفع مغایرت به API ارسال می‌کند.
+    */
     public function repair_database()
     {
 
         global $table_prefix, $wpdb;
         $bazaraOption = get_option('bazara_options');
 
-        $tblname = array('table' => 'bazara_visitor_products', 'id' => "VisitorProductId", 'entity' => 'visitorProduct');
+        $tblname = ['table' => 'bazara_visitor_products', 'id' => "VisitorProductId", 'entity' => 'visitorProduct'];
         $sq[] = $tblname;
         $tblname = 'bazara_products';
-        $tblname = array('table' => 'bazara_products', 'id' => "ProductId", 'entity' => 'product');
+        $tblname = ['table' => 'bazara_products', 'id' => "ProductId", 'entity' => 'product'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_stores', 'id' => "StoreId", 'entity' => 'store');
+        $tblname = ['table' => 'bazara_stores', 'id' => "StoreId", 'entity' => 'store'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_product_properties', 'id' => "PropertyDescriptionId", 'entity' => 'PropertyDescription');
+        $tblname = ['table' => 'bazara_product_properties', 'id' => "PropertyDescriptionId", 'entity' => 'PropertyDescription'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_product_details', 'id' => "ProductDetailId", 'entity' => 'ProductDetail');
+        $tblname = ['table' => 'bazara_product_details', 'id' => "ProductDetailId", 'entity' => 'ProductDetail'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_product_assets', 'id' => "ProductDetailStoreAssetId", 'entity' => 'ProductDetailStoreAsset');
+        $tblname = ['table' => 'bazara_product_assets', 'id' => "ProductDetailStoreAssetId", 'entity' => 'ProductDetailStoreAsset'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_pictures', 'id' => "PictureId", 'entity' => 'picture');
+        $tblname = ['table' => 'bazara_pictures', 'id' => "PictureId", 'entity' => 'picture'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_photo_gallery', 'id' => "PhotoGalleryId", 'entity' => 'PhotoGallery');
+        $tblname = ['table' => 'bazara_photo_gallery', 'id' => "PhotoGalleryId", 'entity' => 'PhotoGallery'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_persons', 'id' => "PersonId", 'entity' => 'person');
+        $tblname = ['table' => 'bazara_persons', 'id' => "PersonId", 'entity' => 'person'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_visitor_persons', 'id' => "VisitorPersonId", 'entity' => 'visitorPerson');
+        $tblname = ['table' => 'bazara_visitor_persons', 'id' => "VisitorPersonId", 'entity' => 'visitorPerson'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_person_groups', 'id' => "PersonGroupId", 'entity' => 'personGroup');
+        $tblname = ['table' => 'bazara_person_groups', 'id' => "PersonGroupId", 'entity' => 'personGroup'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_banks', 'id' => "BankId", 'entity' => 'bank');
+        $tblname = ['table' => 'bazara_banks', 'id' => "BankId", 'entity' => 'bank'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_extra_data', 'id' => "ExtraDataId", 'entity' => 'extraData');
+        $tblname = ['table' => 'bazara_extra_data', 'id' => "ExtraDataId", 'entity' => 'extraData'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_orders', 'id' => "OrderId", 'entity' => 'order');
+        $tblname = ['table' => 'bazara_orders', 'id' => "OrderId", 'entity' => 'order'];
         $sq[] = $tblname;
-        $tblname = array('table' => 'bazara_order_details', 'id' => "OrderDetailId", 'entity' => 'orderDetail');
+        $tblname = ['table' => 'bazara_order_details', 'id' => "OrderDetailId", 'entity' => 'orderDetail'];
         $sq[] = $tblname;
 
         $id = "";
-        $data = array();
+        $data = [];
 
         foreach ($sq as $s) {
 
             $result = get_entity($s['table']);
-            $dispuItems  = array();
+            $dispuItems  = [];
 
             foreach ($result as $item) {
-                $dispuItems[] = array('id' => $item[$s['id']], 'rw' => $item['RowVersion']);
+                $dispuItems[] = ['id' => $item[$s['id']], 'rw' => $item['RowVersion']];
             }
 
-            $data = array('entityName' => $s['entity'], 'databaseId' => $bazaraOption['DatabaseId'], 'disputeItems' => $dispuItems);
+            $data = ['entityName' => $s['entity'], 'databaseId' => $bazaraOption['DatabaseId'], 'disputeItems' => $dispuItems];
             self::repair_entities(null, $this->repair, $data);
         }
     }
-    public function set_all_data($token = '', $input = array())
+    public function set_all_data($token = '', $input = [])
     {
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
         $result = $this->http_post($this->setAll, $input, $token);
@@ -247,72 +261,79 @@ class BazaraApi
 
         if (!$result['Result']) {
             Bz_Import_Export_For_Woo_Basic_Logwriter::write_log('خطا در ارسال اطلاعات', 'Error ', json_encode($result));
-            return array('success' => false, 'message' => json_encode($result));
+            return ['success' => false, 'message' => json_encode($result)];
         }
 
-        return json_encode(array('success' => true, 'message' => $result['Result'], 'data' => $result));
+        return json_encode(['success' => true, 'message' => $result['Result'], 'data' => $result]);
     }
+    /*
+    |--------------------------------------------------------------------------
+    | احراز هویت و مدیریت توکن API
+    |--------------------------------------------------------------------------
+    | در صورت معتبر بودن توکن ذخیره‌شده، همان را بازمی‌گرداند؛ در غیر این صورت
+    | با اطلاعات افزونه وارد می‌شود و توکن جدید را ذخیره می‌کند.
+    */
     public function login_token()
     {
         $this->plugin_options = bazara_get_options();
         $loginOption = get_option('bazara_login');
         if (!empty($loginOption) && $loginOption['expireAt'] >= strtotime('now')) {
-            return array('success' => true, 'message' => $loginOption['token'], 'VisitorID' => $loginOption['VisitorID'], 'extra' => $loginOption['extra'], 'object' => $loginOption['object']);
+            return ['success' => true, 'message' => $loginOption['token'], 'VisitorID' => $loginOption['VisitorID'], 'extra' => $loginOption['extra'], 'object' => $loginOption['object']];
         }
         $validate = bazara_validate_plugin_options($this->plugin_options);
         if ($validate != "")
-            return array('success' => false, 'message' => $validate);
+            return ['success' => false, 'message' => $validate];
 
-        $data = array(
+        $data = [
             'userName' => $this->plugin_options['username'],
             'password' => md5($this->plugin_options['password']),
             //            'databaseId'=>(int)$this->plugin_options['systemSyncID'],
             //            'packageNo'=>(int)$this->plugin_options['packageNumber'],
             'description' => $_SERVER['HTTP_HOST'],
             'AppId' => BAZARA_APP_ID
-        );
+        ];
 
 
         $result = $this->http_post($this->login_url, $data);
 
         if ($result === FALSE) {
-            return array('success' => false, 'message' => __('HTTP Error In Login. Please check your internet connection or may be mahak service is not available now.', 'bazara-mahak'));
+            return ['success' => false, 'message' => __('HTTP Error In Login. Please check your internet connection or may be mahak service is not available now.', 'bazara-mahak')];
         }
         $jObj = json_decode($result, true);
 
         $active_sync = toggle_to_boolean(sanitize_text_field($_REQUEST['active_auto_sync']));
 
         if ($jObj['Result'] == "True") {
-            $options = array(
+            $options = [
                 'token' => $jObj['Data']['UserToken'],
                 'VisitorID' => $jObj['Data']['VisitorId'],
                 'extra' => $data,
                 'object' => $jObj['Data'],
                 'expireAt' => strtotime('+10 Hour'),
-            );
+            ];
             if (!$active_sync)
                 $options['refresh_interval'] = 0;
             update_option('bazara_login', $options);
-            return array('success' => true, 'message' => $jObj['Data']['UserToken'], 'VisitorID' => $jObj['Data']['VisitorId'], 'extra' => $data, 'object' => $jObj['Data']);
+            return ['success' => true, 'message' => $jObj['Data']['UserToken'], 'VisitorID' => $jObj['Data']['VisitorId'], 'extra' => $data, 'object' => $jObj['Data']];
         } else {
             Bz_Import_Export_For_Woo_Basic_Logwriter::write_log('ارسال درخواست لاگین', 'Error ', json_encode($result));
-            return array('success' => false, 'message' => $jObj['Message']);
+            return ['success' => false, 'message' => $jObj['Message']];
         }
     }
 
     private function http_post($url, $data, $bearerToken = '')
     {
 
-        $headers  = array('Content-Type' => 'application/json', 'Authorization' => 'bearer : ' . $bearerToken);
+        $headers  = ['Content-Type' => 'application/json', 'Authorization' => 'bearer : ' . $bearerToken];
 
         $response = wp_remote_request(
             $url,
-            array(
+            [
                 'method'  => 'POST',
                 'body'    => json_encode($data),
                 'timeout'     => 120,
                 'headers' => $headers,
-            )
+            ]
         );
 
         if (is_wp_error($response)) {
@@ -335,7 +356,7 @@ class BazaraApi
             WC_Tax::create_tax_class($tax_class_name);
             WC_Cache_Helper::invalidate_cache_group('taxes');
             WC_Cache_Helper::get_transient_version('shipping', true);
-            $tax_rate_data = array(
+            $tax_rate_data = [
                 'tax_rate_country' => '*',
                 'tax_rate_state' => '*',
                 'tax_rate' => $tax_rate,
@@ -345,19 +366,26 @@ class BazaraApi
                 'tax_rate_shipping' => 1,
                 'tax_rate_order' => 0,
                 'tax_rate_class' => $tax_class_name
-            );
+            ];
             WC_Tax::_insert_tax_rate($tax_rate_data);
         }
 
         return $tax_class_name;
     }
+    /*
+    |--------------------------------------------------------------------------
+    | همگام‌سازی دسته‌بندی‌های ووکامرس
+    |--------------------------------------------------------------------------
+    | دسته‌بندی‌های محصول و داده‌های تکمیلی بازارا را به taxonomy محصول تبدیل
+    | می‌کند و وضعیت همگام‌سازی هر دسته را به‌روز می‌سازد.
+    */
     public function start_sync_category($token = null, $catGroup = 2)
     {
 
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
         switch ($catGroup) {
@@ -377,12 +405,12 @@ class BazaraApi
 
                     if (!$category_exist) {
                         $term_id = wp_insert_term(
-                            $cat['Name'], // the term
-                            'product_cat', // the taxonomy
-                            array(
+                            $cat['Name'], // نام دسته
+                            'product_cat', // نام طبقه‌بندی
+                            [
                                 'parent' => 0,
                                 'slug' => $cat['Name']
-                            )
+                            ]
                         );
                         if (is_wp_error($term_id)) {
                             $insert_error = "خطا در اضافه شدن دسته بندی " . $cat['Name'] . '<br/>';
@@ -398,9 +426,9 @@ class BazaraApi
                         wp_update_term(
                             $term_ids,
                             'product_cat',
-                            array(
+                            [
                                 'name' => $cat['Name'],
-                            )
+                            ]
                         );
                     }
                     update_sub_category_isSync($cat['ProductCategoryId']);
@@ -419,7 +447,7 @@ class BazaraApi
                 break;
         }
     }
-    private function add_sub_cat($ExtraDatas = array(), $pCode = 0)
+    private function add_sub_cat($ExtraDatas = [], $pCode = 0)
     {
         if (!is_array($ExtraDatas)) return false;
 
@@ -445,11 +473,11 @@ class BazaraApi
                     //if (!$term){
 
                     $term_id = wp_insert_term(
-                        $data['CategoryName'], // the term
-                        'product_cat', // the taxonomy
-                        array(
+                        $data['CategoryName'], // نام دسته
+                        'product_cat', // نام طبقه‌بندی
+                        [
                             'parent' => $parent_term_a_id,
-                        )
+                        ]
                     );
 
                     if (is_wp_error($term_id)) {
@@ -469,11 +497,11 @@ class BazaraApi
                     wp_update_term(
                         $term_ids,
                         'product_cat',
-                        array(
+                        [
                             'name' => $data['CategoryName'],
                             'parent' => $parent_term_a_id,
 
-                        )
+                        ]
                     );
                 }
                 update_category_isSync($data['ExtraDataId']);
@@ -619,21 +647,21 @@ class BazaraApi
             if (empty($token)) {
                 $token_result = $this->login_token();
                 if (!$token_result['success'])
-                    return array('success' => false, 'message' => $token_result['message']);
+                    return ['success' => false, 'message' => $token_result['message']];
                 $token = $token_result['message'];
             }
             $latest_rowVersion =  empty(get_last_row_version("Banks")) ? 0 : (get_last_row_version("Banks") + 1);
             $latest_PersonRowVersion =  empty(get_last_row_version("Persons")) ? 0 : (get_last_row_version("Persons") + 1);
 
-            $data = array(
+            $data = [
                 'fromVisitorVersion' => 0,
                 'fromBankVersion' => $latest_rowVersion,
                 'fromPersonVersion' => $latest_PersonRowVersion,
 
-            );
+            ];
             $product_result = $this->get_all_data($token, $data);
             if (!$product_result['success'])
-                return array('success' => false, 'message' => $product_result['success']);
+                return ['success' => false, 'message' => $product_result['success']];
 
 
 
@@ -657,7 +685,7 @@ class BazaraApi
                 });
                 foreach ($Banks as $bank) {
 
-                    $product_items = array(
+                    $product_items = [
                         'BankId' => $bank['BankId'],
                         'BankClientId' => ($bank['BankClientId']),
                         'BankCode' => $bank['BankCode'],
@@ -665,7 +693,7 @@ class BazaraApi
                         'Description' => $bank['Description'],
                         'Deleted' => ($bank['Deleted'] == 'true' ? 1 : 0),
                         'RowVersion' => $bank['RowVersion'],
-                    );
+                    ];
 
                     insert('bazara_banks', $product_items, 'BankId', $bank['BankId']);
                     bazara_update_latest_versions('banks', $bank['RowVersion']);
@@ -680,7 +708,7 @@ class BazaraApi
                 });
                 foreach ($Peoples as $People) {
 
-                    $product_items = array(
+                    $product_items = [
                         'PersonId' => $People['PersonId'],
                         'PersonClientId' => ($People['PersonClientId']),
                         'PersonGroupId' => ($People['PersonGroupId']),
@@ -692,7 +720,7 @@ class BazaraApi
                         'RowVersion' => $People['RowVersion'],
                         'Mobile' => $People['Mobile'],
                         'Address' => $People['Address'],
-                    );
+                    ];
 
                     insert('bazara_persons', $product_items, 'PersonId', $People['PersonId']);
                     bazara_update_latest_versions('persons', $People['RowVersion']);
@@ -703,24 +731,31 @@ class BazaraApi
             if (!empty($visit))
                 update_option('bazara_visitor_options', $visit);
         } catch (\Exception $e) {
-            return array('success' => false, 'message' => $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
     private function get_store_id($token, $StoreCode = 0)
     {
-        $data = array(
+        $data = [
             'fromStoreVersion' => 0
-        ); //fetch all products
+        ]; // دریافت همه محصولات
         $product_result = $this->get_all_data($token, $data);
         $StoreID = 0;
         if (!$product_result['success'])
-            return array('success' => false, 'message' => $product_result['success']);
+            return ['success' => false, 'message' => $product_result['success']];
         foreach ($product_result['message']['Stores'] as $store) {
             if ($store['StoreCode'] == $StoreCode) $StoreID = $store['StoreId'];
         }
 
         return $StoreID;
     }
+    /*
+    |--------------------------------------------------------------------------
+    | همگام‌سازی محصولات جدید
+    |--------------------------------------------------------------------------
+    | محصولات انتخابی یا بازه مشخص‌شده را از داده‌های بازارا دریافت و در
+    | ووکامرس ایجاد یا به‌روزرسانی می‌کند.
+    */
     public function start_sync_new_product($min = 0, $max = 20, $schd = false, $selected_ids = null)
     {
         try {
@@ -731,7 +766,7 @@ class BazaraApi
             $errors = 0;
             $ProductArray = [];
             
-            // If selected_ids is provided, only get those products
+            // در صورت ارسال selected_ids، فقط همان محصولات دریافت می‌شوند
             if ($selected_ids !== null) {
                 $products = get_products_v3(false, $min, $max, $schd, $selected_ids);
             } else {
@@ -741,9 +776,9 @@ class BazaraApi
             $properties = get_properties();
             $extraDatas = get_extras();
             $Qauntity = class_exists('bazara_ratio_calculator') ? 'Count2' : 'Count1';
-            $wp_attrs = $attr_item = $wp_attributes = array();
+            $wp_attrs = $attr_item = $wp_attributes = [];
             $attributes = wc_get_attribute_taxonomies();
-            $data = array();
+            $data = [];
             if (!empty($attributes)) {
                 foreach ($attributes as $key => $value) {
                     $attr_item['slug'] = $attributes[$key]->attribute_name;
@@ -827,7 +862,7 @@ class BazaraApi
                 
  
 
-                $product_items = array(
+                $product_items = [
                     'ProductId' => $product->ProductId,
                     'ProductCode' => $product->ProductCode,
                     'ProductName' => bazara_arabicToPersian($product->ProductName),
@@ -855,7 +890,7 @@ class BazaraApi
                     'unitName1' => $product->unitName1,
                     'unitName2' => $product->unitName2,
                     'sku' => $product->ProductCode
-                );
+                ];
 
                 $deleted  = true;
                 $productDetails = $prop =  [];
@@ -1048,7 +1083,7 @@ class BazaraApi
                     if (!empty(get_visitor_products($price->ProductDetailId, $this->visitor_options['VisitorId'])))
                         $visitorPCount++;
                 }
-                $pa = array();
+                $pa = [];
                 if (!empty($product_items['Objects'])) {
                     foreach ($properties as $property) {
                         $slug = ((in_array(convert_non_persian_chars_to_persian($property->Title), array_column($wp_attributes, 'label')) ? $wp_attributes[array_search(convert_non_persian_chars_to_persian($property->Title), array_column($wp_attributes, 'label'))]['slug'] : convert_non_persian_chars_to_persian($property->Title)));
@@ -1140,12 +1175,12 @@ class BazaraApi
             //     'END SYNC | success=' . $success . ' | errors=' . $errors
             // );           
 
-            return array('success' => true, 'message' => $message, 'add' => $success, 'failed', $errors);
+            return ['success' => true, 'message' => $message, 'add' => $success, 'failed', $errors];
         } catch (\Exception $e) {
-            return array('success' => false, 'message' => json_encode($e->getMessage()));
+            return ['success' => false, 'message' => json_encode($e->getMessage())];
         }
     }
-    function find_attr_without_var($data = array())
+    function find_attr_without_var($data = [])
     {
         return array_filter(
             $data,
@@ -1154,16 +1189,23 @@ class BazaraApi
             }
         );
     }
+    /*
+    |--------------------------------------------------------------------------
+    | دریافت و ذخیره موجودیت‌های بازارا
+    |--------------------------------------------------------------------------
+    | اطلاعات پایه مانند محصول، قیمت، موجودی، ویژگی و داده‌های تکمیلی را به
+    | صورت افزایشی دریافت کرده و در جداول محلی ذخیره می‌کند.
+    */
     public function bazara_copy_entities($type = 'products', $min = 0, $max = 20)
     {
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
 
-        // Handle combined product sync
+        // اجرای همگام‌سازی ترکیبی محصولات
         if ($type === 'ProductSync') {
             return $this->sync_combined_products($token, $min, $max);
         }
@@ -1185,29 +1227,29 @@ class BazaraApi
         }
 
 
-        $data = array(
+        $data = [
             "{$this->entities[$type]['entity']}" => empty($latest_rowVersion) ? 0 : ($latest_rowVersion)
-        ); //fetch all products
+        ]; // دریافت همه محصولات
 
 
 
         if ($this->entities[$type]['alias'] == 'product' || $this->entities[$type]['alias'] == 'productDetail') {
             $visitor_latest_rv  = $VisitorProducts_latest_rowVersion;
-            $v = array(
+            $v = [
                 'fromVisitorProductVersion' => $visitor_latest_rv
-            );
+            ];
             $data = array_merge($data, $v);
         }
 
         if ($this->entities[$type]['alias'] == 'VisitorProducts') {
-            $v = array(
+            $v = [
                 'fromproductversion' => empty($Prodcutlatest_rowVersion) ? 0 : ($Prodcutlatest_rowVersion)
-            );
+            ];
             $data = array_merge($data, $v);
         }
         $product_result = $this->get_all_data($token, $data);
         if (!$product_result['success'])
-            return array('count' => 0, 'error' => $product_result['message'], 'success' => false);
+            return ['count' => 0, 'error' => $product_result['message'], 'success' => false];
 
         $this->visitor_options = get_bazara_visitor_options();
         $this->visitor_settings = get_bazara_visitor_settings();
@@ -1265,7 +1307,7 @@ class BazaraApi
                             $taxClass = $this->create_woo_tax($tax);
                         }
 
-                        $product_items = array(
+                        $product_items = [
                             'ProductId' => $product['ProductId'],
                             'ProductCode' => $product['ProductCode'],
                             'ProductName' => ($product['Name']),
@@ -1288,7 +1330,7 @@ class BazaraApi
                             'unitRatio' => $product['UnitRatio'],
                             'Deleted' => $product['Deleted'] ? 1 : 0,
 
-                        );
+                        ];
                         $res = insert('bazara_products', $product_items, 'ProductId', $product['ProductId']);
                         bazara_update_latest_versions('product', $product['RowVersion']);
                         update_schedule_sync($product['ProductId'], 'detailSync', 0);
@@ -1336,7 +1378,7 @@ class BazaraApi
                             if (isset($productdetail["Discount{$i}"]) && !empty($productdetail["Discount{$i}"]));
                             $Discounts[$i]["Discount{$i}"] = $productdetail["Discount{$i}"];
                         }
-                        $product_items = array(
+                        $product_items = [
                             'ProductId' => $productdetail['ProductId'],
                             'ProductDetailId' => $productdetail['ProductDetailId'],
                             'Properties' => ($productdetail['Properties']),
@@ -1348,7 +1390,7 @@ class BazaraApi
                             'DefaultSellPriceLevel' => $productdetail['DefaultSellPriceLevel'],
                             'RowVersion' => $productdetail['RowVersion'],
                             'Deleted' => $productdetail['Deleted'] ? 1 : 0,
-                        );
+                        ];
 
 
 
@@ -1381,13 +1423,13 @@ class BazaraApi
                             continue;
                         if ($index > $max)
                             break;
-                        $product_items = array(
+                        $product_items = [
                             'VisitorProductId' => $visitorProduct['VisitorProductId'],
                             'ProductDetailId' => ($visitorProduct['ProductDetailId']),
                             'VisitorId' => $visitorProduct['VisitorId'],
                             'Deleted' => ($visitorProduct['Deleted'] == 'true' ? 1 : 0),
                             'RowVersion' => $visitorProduct['RowVersion'],
-                        );
+                        ];
 
                         insert('bazara_visitor_products', $product_items, 'VisitorProductId', $visitorProduct['VisitorProductId']);
                         $ProductID = get_product_id($visitorProduct['ProductDetailId']);
@@ -1415,7 +1457,7 @@ class BazaraApi
                         if ($index > $max)
                             break;
                         //if ($this->visitor_options['StoreID'] == $productAsset['StoreId'] && $this->visitor_options['StoreID'] != 0) {
-                        $product_items = array(
+                        $product_items = [
                             'ProductDetailStoreAssetId' => $productAsset['ProductDetailStoreAssetId'],
                             'ProductDetailId' => ($productAsset['ProductDetailId']),
                             'Count1' => $productAsset['Count1'],
@@ -1424,7 +1466,7 @@ class BazaraApi
                             'RowVersion' => $productAsset['RowVersion'],
                             'Deleted' => $productAsset['Deleted'] ? 1 : 0,
 
-                        );
+                        ];
                         insert('bazara_product_assets', $product_items, 'ProductDetailStoreAssetId', $productAsset['ProductDetailStoreAssetId']);
                         bazara_update_latest_versions('ProductAsset', $productAsset['RowVersion']);
                         $ProductID = get_product_id($productAsset['ProductDetailId']);
@@ -1443,7 +1485,7 @@ class BazaraApi
 
                 $ProductProperties = $product_result['message']['PropertyDescriptions'];
 
-                $attrs = array();
+                $attrs = [];
 
                 $attributes = wc_get_attribute_taxonomies();
                 if (!empty($attributes)) {
@@ -1458,7 +1500,7 @@ class BazaraApi
                     foreach ($ProductProperties as $property) {
 
                         $title = implode('-', explode(' ', $property['Title']));
-                        $product_items = array(
+                        $product_items = [
                             'PropertyDescriptionId' => $property['PropertyDescriptionId'],
                             'PropertyDescriptionCode' => $property['PropertyDescriptionCode'],
                             'DisplayType' => $property['DisplayType'],
@@ -1466,10 +1508,10 @@ class BazaraApi
                             'Title' => $title,
                             'RowVersion' => $property['RowVersion'],
                             'Deleted' => $property['Deleted'] ? 1 : 0,
-                        );
+                        ];
 
                         if (!in_array($title, $attrs)) {
-                            $args = array(
+                            $args = [
                                 'slug' => sanitize_title($title),
                                 'name' => $title,
                                 'type' => 'select',
@@ -1477,7 +1519,7 @@ class BazaraApi
                                 'has_archives' => false,
                                 'limit' => 1,
                                 'is_in_stock' => 1
-                            );
+                            ];
 
                             wc_create_attribute($args);
                             WC_Post_Types::register_taxonomies();
@@ -1505,14 +1547,14 @@ class BazaraApi
                             continue;
                         if ($index > $max)
                             break;
-                        $product_items = array(
+                        $product_items = [
                             'CityID' => $region['CityID'],
                             'CityName' => ($region['CityName']),
                             'ProvinceID' => $region['ProvinceID'],
                             'ProvinceName' => $region['ProvinceName'],
                             'MapCode' => $region['MapCode'],
                             'RowVersion' => $region['RowVersion'],
-                        );
+                        ];
 
 
                         insert('bazara_regions', $product_items, 'CityID', $region['CityID']);
@@ -1539,13 +1581,13 @@ class BazaraApi
                             continue;
                         if ($index > $max)
                             break;
-                        $product_items = array(
+                        $product_items = [
                             'PersonGroupId' => $prg['PersonGroupId'],
                             'Name' => ($prg['Name']),
                             'DiscountPercent' => $prg['DiscountPercent'],
                             'SellPriceLevel' => $prg['SellPriceLevel'],
                             'RowVersion' => $prg['RowVersion'],
-                        );
+                        ];
 
 
                         insert('bazara_person_groups', $product_items, 'PersonGroupId', $prg['PersonGroupId']);
@@ -1563,7 +1605,7 @@ class BazaraApi
                         if ($item1['RowVersion'] == $item2['RowVersion']) return 0;
                         return $item1['RowVersion'] < $item2['RowVersion'] ? -1 : 1;
                     });
-                    $exType = array(130, 10202);
+                    $exType = [130, 10202];
                     $index = 0;
 
                     foreach ($ExtraDatas as $extraData) {
@@ -1574,14 +1616,14 @@ class BazaraApi
                         if ($index > $max)
                             break;
 
-                        $product_items = array(
+                        $product_items = [
                             'ExtraDataId' => $extraData['ExtraDataId'],
                             'ItemType' => ($extraData['ItemType']),
                             'ItemId' => $extraData['ItemId'],
                             'Data' => $extraData['Data'],
                             'RowVersion' => $extraData['RowVersion'],
                             'Deleted' => $extraData['Deleted'] ? 1 : 0,
-                        );
+                        ];
 
 
                         insert('bazara_extra_data', $product_items, 'ExtraDataId', $extraData['ExtraDataId']);
@@ -1590,14 +1632,14 @@ class BazaraApi
 
                             $data = json_decode($extraData['Data'], true);
 
-                            $product_items = array(
+                            $product_items = [
                                 'ExtraDataId' => $extraData['ExtraDataId'],
                                 'CategoryID' => $data['CategoryCode'],
                                 'CategoryName' => $data['CategoryName'],
                                 'ItemType' => $extraData['ItemType'],
                                 'ParentID' => ($extraData['ItemType'] == 130  ? $data['ParentCode'] : $data['ProductCode']),
                                 'isSync'   => 0
-                            );
+                            ];
                             insert('bazara_category', $product_items, 'ExtraDataId', $extraData['ExtraDataId']);
                             if ($extraData['ItemType'] == 10202) {
                                 change_product_issync_value($data['ProductCode']);
@@ -1625,14 +1667,14 @@ class BazaraApi
                             break;
                         // if (in_array($extraData['ItemType'],$exType)) {
 
-                        $product_items = array(
+                        $product_items = [
                             'ProductCategoryId' => $catgory['ProductCategoryId'],
                             'Name' => ($catgory['Name']),
                             'RowVersion' => $catgory['RowVersion'],
                             'Deleted' => $catgory['Deleted'] ? 1 : 0,
                             'isSync'   => 0
 
-                        );
+                        ];
 
 
                         insert('bazara_sub_category', $product_items, 'ProductCategoryId', $catgory['ProductCategoryId']);
@@ -1659,7 +1701,7 @@ class BazaraApi
                             continue;
                         if ($index > $max)
                             break;
-                        $product_items = array(
+                        $product_items = [
                             'PictureId' => $pic['PictureId'],
                             'FileName' => ($pic['FileName']),
                             'Url' => $pic['Url'],
@@ -1668,7 +1710,7 @@ class BazaraApi
                             'isSync' => 0,
                             'Deleted' => ($pic['Deleted'] ? 1 : 0),
 
-                        );
+                        ];
 
 
                         insert('bazara_pictures', $product_items, 'PictureId', $pic['PictureId']);
@@ -1696,14 +1738,14 @@ class BazaraApi
                             continue;
                         if ($index > $max)
                             break;
-                        $product_items = array(
+                        $product_items = [
                             'PhotoGalleryId' => $gallery['PhotoGalleryId'],
                             'PictureId' => $gallery['PictureId'],
                             'ItemCode' => ($gallery['ItemCode']),
                             'RowVersion' => $gallery['RowVersion'],
                             'Deleted' => ($gallery['Deleted'] == 'true' ? 1 : 0),
 
-                        );
+                        ];
 
 
                         insert('bazara_photo_gallery', $product_items, 'PhotoGalleryId', $gallery['PhotoGalleryId']);
@@ -1722,7 +1764,7 @@ class BazaraApi
 
                     foreach ($Banks as $bank) {
 
-                        $product_items = array(
+                        $product_items = [
                             'BankId' => $bank['BankId'],
                             'BankClientId' => ($bank['BankClientId']),
                             'BankCode' => $bank['BankCode'],
@@ -1730,7 +1772,7 @@ class BazaraApi
                             'Description' => $bank['Description'],
                             'Deleted' => ($bank['Deleted'] == 'true' ? 1 : 0),
                             'RowVersion' => $bank['RowVersion'],
-                        );
+                        ];
 
                         insert('bazara_banks', $product_items, 'BankId', $bank['BankId']);
                         bazara_update_latest_versions('banks', $bank['RowVersion']);
@@ -1748,14 +1790,14 @@ class BazaraApi
 
                     foreach ($Stores as $store) {
 
-                        $product_items = array(
+                        $product_items = [
                             'StoreId' => $store['StoreId'],
                             'StoreCode' => ($store['StoreCode']),
                             'Name' => $store['Name'],
                             'Comment' => $store['Comment'],
                             'Deleted' => ($store['Deleted'] == 'true' ? 1 : 0),
                             'RowVersion' => $store['RowVersion'],
-                        );
+                        ];
 
                         insert('bazara_stores', $product_items, 'StoreId', $store['StoreId']);
                         bazara_update_latest_versions('stores', $store['RowVersion']);
@@ -1780,7 +1822,7 @@ class BazaraApi
                         if ($index > $max)
                             break;
 
-                        $product_items = array(
+                        $product_items = [
                             'PersonId' => $People['PersonId'],
                             'PersonClientId' => ($People['PersonClientId']),
                             'PersonGroupId' => ($People['PersonGroupId']),
@@ -1793,7 +1835,7 @@ class BazaraApi
                             'isSync' => 0,
                             'Mobile' => $People['Mobile'],
                             'Address' => $People['Address'],
-                        );
+                        ];
 
                         insert('bazara_persons', $product_items, 'PersonId', $People['PersonId']);
                         bazara_update_latest_versions('persons', $People['RowVersion']);
@@ -1815,13 +1857,13 @@ class BazaraApi
                                 continue;
                             if ($index > $max)
                                 break;
-                            $product_items = array(
+                            $product_items = [
                                 'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
                                 'PersonId' => ($visitorPerson['PersonId']),
                                 'VisitorId' => $visitorPerson['VisitorId'],
                                 'Deleted' => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
                                 'RowVersion' => $visitorPerson['RowVersion'],
-                            );
+                            ];
     
                             insert('bazara_visitor_persons', $product_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
                         }
@@ -1837,7 +1879,7 @@ class BazaraApi
                     });
                     foreach ($Transactions as $Transaction) {
 
-                        $product_items = array(
+                        $product_items = [
                             'TransactionId' => $Transaction['TransactionId'],
                             'Row' => ($Transaction['Row']),
                             'PersonId' => ($Transaction['PersonId']),
@@ -1853,7 +1895,7 @@ class BazaraApi
                             'RowVersion' => $Transaction['RowVersion'],
                             'Date' => $Transaction['Date'],
 
-                        );
+                        ];
 
                         insert('bazara_transactions', $product_items, 'TransactionId', $Transaction['TransactionId']);
                         bazara_update_latest_versions('transactions', $Transaction['RowVersion']);
@@ -1870,7 +1912,7 @@ class BazaraApi
                     });
                     foreach ($Orders as $order) {
 
-                        $product_items = array(
+                        $product_items = [
                             'OrderId' => $order['OrderId'],
                             'OrderClientId' => ($order['OrderClientId']),
                             'OrderCode' => ($order['OrderCode']),
@@ -1879,7 +1921,7 @@ class BazaraApi
                             'Deleted' => $order['Deleted'],
                             'RowVersion' => $order['RowVersion']
 
-                        );
+                        ];
 
                         insert('bazara_orders', $product_items, 'OrderId', $order['OrderId']);
                         bazara_update_latest_versions('orders', $order['RowVersion']);
@@ -1895,7 +1937,7 @@ class BazaraApi
                     });
                     foreach ($OrderDetails as $order) {
 
-                        $product_items = array(
+                        $product_items = [
                             'OrderId' => $order['OrderId'],
                             'OrderDetailId' => ($order['OrderDetailId']),
                             'OrderDetailClientId' => ($order['OrderDetailClientId']),
@@ -1906,7 +1948,7 @@ class BazaraApi
                             'Deleted' => $order['Deleted'],
                             'RowVersion' => $order['RowVersion']
 
-                        );
+                        ];
 
                         insert('bazara_order_details', $product_items, 'OrderDetailId', $order['OrderDetailId']);
                         bazara_update_latest_versions('OrderDetails', $order['RowVersion']);
@@ -1914,10 +1956,17 @@ class BazaraApi
                 }
                 break;
         }
-        return array('success' => true, 'message' => '');
+        return ['success' => true, 'message' => ''];
     }
 
 
+    /*
+    |--------------------------------------------------------------------------
+    | همگام‌سازی تصاویر محصول
+    |--------------------------------------------------------------------------
+    | تصاویر حذف‌شده را پاک می‌کند و تصاویر جدید را به تصویر شاخص یا گالری
+    | محصولات ووکامرس اضافه می‌کند.
+    */
     public function sync_pictures()
 {
     $error_message = "";
@@ -1943,16 +1992,16 @@ class BazaraApi
             $product_id = $objProduct->get_id();
             
             // جستجوی تصویر با شناسه محک
-            $args = array(
+            $args = [
                 'post_status' => 'inherit',
                 'post_type' => 'attachment',
-                'meta_query' => array(
-                    array(
+                'meta_query' => [
+                    [
                         'key' => 'mahak_picture_id',
                         'value' => $deleted_pic->PictureId
-                    )
-                )
-            );
+                    ]
+                ]
+            ];
             
             $posts = get_posts($args);
             if (!empty($posts)) {
@@ -1965,7 +2014,7 @@ class BazaraApi
                 
                 // حذف از گالری تصاویر
                 $gallery_ids = $objProduct->get_gallery_image_ids();
-                $gallery_ids = array_diff($gallery_ids, array($attachment_id));
+                $gallery_ids = array_diff($gallery_ids, [$attachment_id]);
                 $objProduct->set_gallery_image_ids($gallery_ids);
                 
                 $objProduct->save();
@@ -1995,7 +2044,7 @@ class BazaraApi
         if (!isset($processed_products[$product_id])) {
             // حذف تصویر شاخص و گالری با استفاده از متدهای ووکامرس
             $objProduct->set_image_id(''); // حذف تصویر شاخص
-            $objProduct->set_gallery_image_ids(array()); // حذف گالری تصاویر
+            $objProduct->set_gallery_image_ids([]); // حذف گالری تصاویر
             $objProduct->save(); // ذخیره تغییرات
             $processed_products[$product_id] = true;
         }
@@ -2011,16 +2060,16 @@ class BazaraApi
                 $expected_url = $this->img_url . $FileName;
 
                 // جستجوی تصویر با شناسه محک
-                $args = array(
+                $args = [
                     'post_status' => 'inherit',
                     'post_type' => 'attachment',
-                    'meta_query' => array(
-                        array(
+                    'meta_query' => [
+                        [
                             'key' => 'mahak_picture_id',
                             'value' => $pic['PictureId']
-                        )
-                    )
-                );
+                        ]
+                    ]
+                ];
 
                 $posts = get_posts($args);
 
@@ -2083,7 +2132,7 @@ class BazaraApi
         Bz_Import_Export_For_Woo_Basic_Logwriter::write_log('خطا در دریافت عکس', 'Error ', ($message));
     }
 
-    return array('success' => true, 'message' => $message);
+    return ['success' => true, 'message' => $message];
 }
 
     private function prepare_product_for_creation(&$data, $extraData = null, $sched = false)
@@ -2149,7 +2198,7 @@ class BazaraApi
         $productArgs['virtual'] = false;
 
         if (!empty($data['attributes'])) {
-            $productArgs['attributes'] = array($data['attributes']);
+            $productArgs['attributes'] = [$data['attributes']];
             $productArgs['vars'] = $data['vars'];
         }
 
@@ -2192,7 +2241,7 @@ class BazaraApi
 
         $res = create_product($productArgs);
 
-        return array('success' => $res['success'], 'message' => $res['message']);
+        return ['success' => $res['success'], 'message' => $res['message']];
     }
 
 
@@ -2203,11 +2252,11 @@ class BazaraApi
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
 
-        $data = array('fromPersonGroupVersion' => 0); //fetch all products
+        $data = ['fromPersonGroupVersion' => 0]; // دریافت همه محصولات
         $groups_result = $this->get_all_data($token, $data);
 
         $role_groups = json_decode(json_encode($groups_result['message']), true)['PersonGroups'];
@@ -2216,6 +2265,13 @@ class BazaraApi
 
         return true;
     }
+    /*
+    |--------------------------------------------------------------------------
+    | همگام‌سازی اشخاص و گروه‌های اشخاص
+    |--------------------------------------------------------------------------
+    | اشخاص دریافت‌شده از بازارا را پردازش و حساب‌های کاربری و نقش‌های
+    | ووکامرس مرتبط را ایجاد یا به‌روزرسانی می‌کند.
+    */
     public function start_sync_persons()
     {
 
@@ -2253,7 +2309,7 @@ class BazaraApi
         }
 
 
-        return array('success' => true, 'message' => $message);
+        return ['success' => true, 'message' => $message];
     }
     /**
  * ایجاد یا به‌روزرسانی کاربر وردپرسی بر اساس داده‌های شخص ارائه‌شده.
@@ -2261,184 +2317,184 @@ class BazaraApi
  * @param array $service_person
  * @return array
  */
-private function save_update_person($service_person) {
-    try {
+    private function save_update_person($service_person) {
+        try {
 
-        // اعتبارسنجی اولیه
-        if (empty($service_person['PersonId']) || empty($service_person['FirstName']) || empty($service_person['LastName'])) {
-            return ['success' => false, 'message' => __('فیلدهای ضروری وجود ندارند.', 'mahak-bazara')];
-        }
-
-        $person_id = $service_person['PersonId'];
-        $objPerson = $this->get_person_by_mahakID($person_id);
-
-        if (empty($objPerson) && !empty($service_person['Email'])) {
-            $objPerson = get_user_by('email', $service_person['Email']);
-        }
-
-        // تعیین نام کاربری
-        if (!empty($service_person['Email'])) {
-            $username = $service_person['Email'];
-        } elseif (!empty($service_person['Mobile'])) {
-            $username = $service_person['Mobile'];
-        } else {
-            return ['success' => false, 'message' => __('نام کاربری قابل ایجاد نیست.', 'mahak-bazara')];
-        }
-
-        // بررسی administrator بودن
-        $is_administrator = false;
-        if (!empty($objPerson)) {
-            $is_administrator = in_array('administrator', (array) $objPerson->roles, true);
-        }
-
-        // داده‌های کاربر
-        $userdata = [
-            'user_login'   => empty($objPerson) ? $username : $objPerson->user_login,
-            'display_name' => $service_person['FirstName'] . ' ' . $service_person['LastName'],
-            'user_email'   => $service_person['Email'] ?? '',
-            'first_name'   => $service_person['FirstName'],
-            'last_name'    => $service_person['LastName'],
-        ];
-
-        if (!empty($objPerson)) {
-            $userdata['ID'] = $objPerson->ID;
-        } else {
-            $userdata['user_pass'] = wp_generate_password(12, true);
-        }
-
-        // ایجاد یا بروزرسانی
-        $user_id = empty($objPerson) ? wp_insert_user($userdata) : wp_update_user($userdata);
-
-        if (is_wp_error($user_id)) {
-            return ['success' => false, 'message' => $user_id->get_error_message()];
-        }
-
-        // متادیتا
-        update_user_meta($user_id, 'mahak_id', $person_id);
-        update_user_meta($user_id, 'mahak_PersonCode', $service_person['PersonCode'] ?? '');
-        update_user_meta($user_id, 'mreeir_phone', $service_person['Mobile'] ?? '');
-
-        // موبایل بین‌المللی
-        if (!empty($service_person['Mobile']) && preg_match('/^0[0-9]{10}$/', $service_person['Mobile'])) {
-            $intl_mobile = substr_replace($service_person['Mobile'], '+98', 0, 1);
-            update_user_meta($user_id, 'digits_phone_no', $intl_mobile);
-            update_user_meta($user_id, 'digits_phone', $intl_mobile);
-        }
-
-        // اطلاعات صورتحساب
-        $billing_meta = [
-            'billing_first_name' => $service_person['FirstName'],
-            'billing_last_name'  => $service_person['LastName'],
-            'billing_address_1'  => $service_person['Address'] ?? '',
-            'billing_email'      => $service_person['Email'] ?? '',
-        ];
-        foreach ($billing_meta as $key => $val) {
-            if ($val !== null) {
-                update_user_meta($user_id, $key, $val);
-            }
-        }
-
-        // همگام‌سازی
-        update_person_sync($person_id);
-
-        /**
-         * مدیریت نقش‌ها (غیر administrator)
-         */
-        if (!$is_administrator) {
-            $user = new \WP_User($user_id);
-
-            // نقش دریافتی از سرویس
-            $desired_role_normalized = !empty($service_person['gName'])
-                ? $this->normalize_role_name($service_person['gName'])
-                : 'customer';
-
-            // نقش‌های وردپرس + نرمال‌سازی
-            $all_roles = $this->get_all_roles();
-            $normalized_roles = [];
-
-            foreach ($all_roles as $role) {
-                $normalized_roles[$this->normalize_role_name($role)] = $role;
+            // اعتبارسنجی اولیه
+            if (empty($service_person['PersonId']) || empty($service_person['FirstName']) || empty($service_person['LastName'])) {
+                return ['success' => false, 'message' => __('فیلدهای ضروری وجود ندارند.', 'mahak-bazara')];
             }
 
-            // تعیین نقش نهایی
-            if (isset($normalized_roles[$desired_role_normalized])) {
-                $role_to_assign = $normalized_roles[$desired_role_normalized];
+            $person_id = $service_person['PersonId'];
+            $objPerson = $this->get_person_by_mahakID($person_id);
+
+            if (empty($objPerson) && !empty($service_person['Email'])) {
+                $objPerson = get_user_by('email', $service_person['Email']);
+            }
+
+            // تعیین نام کاربری
+            if (!empty($service_person['Email'])) {
+                $username = $service_person['Email'];
+            } elseif (!empty($service_person['Mobile'])) {
+                $username = $service_person['Mobile'];
             } else {
-                $role_to_assign = 'customer';
+                return ['success' => false, 'message' => __('نام کاربری قابل ایجاد نیست.', 'mahak-bazara')];
             }
 
-            // حذف نقش‌های قبلی
-            foreach ($user->roles as $current_role) {
-                if ($current_role !== $role_to_assign) {
-                    $user->remove_role($current_role);
+            // بررسی administrator بودن
+            $is_administrator = false;
+            if (!empty($objPerson)) {
+                $is_administrator = in_array('administrator', (array) $objPerson->roles, true);
+            }
+
+            // داده‌های کاربر
+            $userdata = [
+                'user_login'   => empty($objPerson) ? $username : $objPerson->user_login,
+                'display_name' => $service_person['FirstName'] . ' ' . $service_person['LastName'],
+                'user_email'   => $service_person['Email'] ?? '',
+                'first_name'   => $service_person['FirstName'],
+                'last_name'    => $service_person['LastName'],
+            ];
+
+            if (!empty($objPerson)) {
+                $userdata['ID'] = $objPerson->ID;
+            } else {
+                $userdata['user_pass'] = wp_generate_password(12, true);
+            }
+
+            // ایجاد یا بروزرسانی
+            $user_id = empty($objPerson) ? wp_insert_user($userdata) : wp_update_user($userdata);
+
+            if (is_wp_error($user_id)) {
+                return ['success' => false, 'message' => $user_id->get_error_message()];
+            }
+
+            // متادیتا
+            update_user_meta($user_id, 'mahak_id', $person_id);
+            update_user_meta($user_id, 'mahak_PersonCode', $service_person['PersonCode'] ?? '');
+            update_user_meta($user_id, 'mreeir_phone', $service_person['Mobile'] ?? '');
+
+            // موبایل بین‌المللی
+            if (!empty($service_person['Mobile']) && preg_match('/^0[0-9]{10}$/', $service_person['Mobile'])) {
+                $intl_mobile = substr_replace($service_person['Mobile'], '+98', 0, 1);
+                update_user_meta($user_id, 'digits_phone_no', $intl_mobile);
+                update_user_meta($user_id, 'digits_phone', $intl_mobile);
+            }
+
+            // اطلاعات صورتحساب
+            $billing_meta = [
+                'billing_first_name' => $service_person['FirstName'],
+                'billing_last_name'  => $service_person['LastName'],
+                'billing_address_1'  => $service_person['Address'] ?? '',
+                'billing_email'      => $service_person['Email'] ?? '',
+            ];
+            foreach ($billing_meta as $key => $val) {
+                if ($val !== null) {
+                    update_user_meta($user_id, $key, $val);
                 }
             }
 
-            // افزودن نقش جدید
-            if (!in_array($role_to_assign, $user->roles, true)) {
-                $user->add_role($role_to_assign);
+            // همگام‌سازی
+            update_person_sync($person_id);
+
+            /**
+             * مدیریت نقش‌ها (غیر administrator)
+             */
+            if (!$is_administrator) {
+                $user = new \WP_User($user_id);
+
+                // نقش دریافتی از سرویس
+                $desired_role_normalized = !empty($service_person['gName'])
+                    ? $this->normalize_role_name($service_person['gName'])
+                    : 'customer';
+
+                // نقش‌های وردپرس + نرمال‌سازی
+                $all_roles = $this->get_all_roles();
+                $normalized_roles = [];
+
+                foreach ($all_roles as $role) {
+                    $normalized_roles[$this->normalize_role_name($role)] = $role;
+                }
+
+                // تعیین نقش نهایی
+                if (isset($normalized_roles[$desired_role_normalized])) {
+                    $role_to_assign = $normalized_roles[$desired_role_normalized];
+                } else {
+                    $role_to_assign = 'customer';
+                }
+
+                // حذف نقش‌های قبلی
+                foreach ($user->roles as $current_role) {
+                    if ($current_role !== $role_to_assign) {
+                        $user->remove_role($current_role);
+                    }
+                }
+
+                // افزودن نقش جدید
+                if (!in_array($role_to_assign, $user->roles, true)) {
+                    $user->add_role($role_to_assign);
+                }
             }
+
+            // ارسال ایمیل کاربر جدید
+            if (empty($objPerson) && !empty($service_person['Email'])) {
+                wp_new_user_notification($user_id, null, 'both');
+            }
+
+            return ['success' => true, 'message' => ''];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
         }
-
-        // ارسال ایمیل کاربر جدید
-        if (empty($objPerson) && !empty($service_person['Email'])) {
-            wp_new_user_notification($user_id, null, 'both');
-        }
-
-        return ['success' => true, 'message' => ''];
-
-    } catch (\Exception $e) {
-        return ['success' => false, 'message' => $e->getMessage()];
-    }
-}
-
-/**
- * نرمال‌سازی نام نقش فارسی برای تطبیق با slug نقش در وردپرس
- *
- * @param string $role_name نام نقش به صورت نمایشی (مثل "مشتریان سایت تک")
- * @return string slug نرمال‌شده نقش
- */
-private function normalize_role_name($role_name) {
-    if (empty($role_name)) {
-        return '';
     }
 
-    // تبدیل حروف عربی به فارسی
-    $role_name = str_replace(
-        ['ي', 'ك', 'ة', 'ۀ'],
-        ['ی', 'ک', 'ه', 'ه'],
-        $role_name
-    );
+    /**
+     * نرمال‌سازی نام نقش فارسی برای تطبیق با slug نقش در وردپرس
+     *
+     * @param string $role_name نام نقش به صورت نمایشی (مثل "مشتریان سایت تک")
+     * @return string slug نرمال‌شده نقش
+     */
+    private function normalize_role_name($role_name) {
+        if (empty($role_name)) {
+            return '';
+        }
 
-    // تبدیل فاصله و نیم‌فاصله به _
-    $role_name = str_replace([' ', '‌'], '_', $role_name);
+        // تبدیل حروف عربی به فارسی
+        $role_name = str_replace(
+            ['ي', 'ك', 'ة', 'ۀ'],
+            ['ی', 'ک', 'ه', 'ه'],
+            $role_name
+        );
 
-    // حذف کاراکترهای غیرمجاز
-    $role_name = preg_replace('/[^ا-یآ-ی0-9_a-zA-Z\-]/u', '_', $role_name);
+        // تبدیل فاصله و نیم‌فاصله به _
+        $role_name = str_replace([' ', '‌'], '_', $role_name);
 
-    // حذف _ اضافی
-    $role_name = preg_replace('/_+/', '_', $role_name);
-    $role_name = trim($role_name, '_');
+        // حذف کاراکترهای غیرمجاز
+        $role_name = preg_replace('/[^ا-یآ-ی0-9_a-zA-Z\-]/u', '_', $role_name);
 
-    return $role_name;
-}
+        // حذف _ اضافی
+        $role_name = preg_replace('/_+/', '_', $role_name);
+        $role_name = trim($role_name, '_');
 
-/**
- * تابع کمکی برای دریافت تمام نقش‌های معتبر وردپرس.
- *
- * @return array لیست نام‌های نقش‌ها.
- */
-private function get_all_roles() {
-    $roles = wp_roles()->get_names();
-    return array_keys($roles);
-}
+        return $role_name;
+    }
+
+    /**
+     * تابع کمکی برای دریافت تمام نقش‌های معتبر وردپرس.
+     *
+     * @return array لیست نام‌های نقش‌ها.
+     */
+    private function get_all_roles() {
+        $roles = wp_roles()->get_names();
+        return array_keys($roles);
+    }
     private function get_person_by_mahakID($mahak_id)
     {
-        $users = get_users(array(
+        $users = get_users([
             'meta_key' => 'mahak_id',
             'role__not_in' => ['administrator'],
             'meta_value' => $mahak_id
-        ));
+        ]);
         $user = null;
         if (!empty($users))
             $user = get_userdata($users[0]->ID);
@@ -2453,7 +2509,7 @@ private function get_all_roles() {
         }
         return null;
     }
-    private function send_persons($token, $personGroup, $person = array())
+    private function send_persons($token, $personGroup, $person = [])
     {
 
 
@@ -2462,20 +2518,20 @@ private function get_all_roles() {
 
         if (empty($person)) {
             $new_users = get_users(
-                array(
+                [
                     'role__not_in' => ['administrator'],
-                    'meta_query' => array(
+                    'meta_query' => [
                         'relation' => 'or',
-                        array('key' => 'mahak_id', 'value' => '', 'compare' => '=='),
-                        array('key' => 'mahak_id', 'compare' => 'NOT EXISTS')
-                    )
-                )
+                        ['key' => 'mahak_id', 'value' => '', 'compare' => '=='],
+                        ['key' => 'mahak_id', 'compare' => 'NOT EXISTS']
+                    ]
+                ]
             );
         } else
             $new_users = $person;
 
-        $datas = array();
-        $addresses = $visitor =  array();
+        $datas = [];
+        $addresses = $visitor =  [];
 
 
         foreach ($new_users as $user) {
@@ -2488,7 +2544,7 @@ private function get_all_roles() {
             $visitor[] = $this->convert_user_to_people($user, 0, $personGroup)['visitor'];
         }
 
-        $result = $this->set_all_data($token, array('people' => $peoples, 'visitorPeople' => $visitor));
+        $result = $this->set_all_data($token, ['people' => $peoples, 'visitorPeople' => $visitor]);
         $result_ids = json_decode($result, true)['data']['Data']['Objects']['People']['Results'];
         $count = 0;
         $visitors = [];
@@ -2498,7 +2554,7 @@ private function get_all_roles() {
         foreach ($new_users as $user) {
             $mahak_id = $result_ids[$count]['EntityId'];
             if ($mahak_id) {
-                $PersonAddresses[] = array(
+                $PersonAddresses[] = [
                     "personId" => (int)$mahak_id,
                     "Title" =>  $addresses[$count]['title'],
                     "Address" =>  $addresses[$count]['title'],
@@ -2507,7 +2563,7 @@ private function get_all_roles() {
                     "longitude" =>  0,
                     "isDefault" =>  false,
                     "deleted" =>  false
-                );
+                ];
                 update_user_meta($user->ID, 'mahak_id', $mahak_id);
                 update_user_meta($user->ID, 'role', 'customer');
             }
@@ -2516,7 +2572,7 @@ private function get_all_roles() {
             $count++;
         }
 
-        $t = $this->set_all_data($token, array('personAddresses' => $PersonAddresses));
+        $t = $this->set_all_data($token, ['personAddresses' => $PersonAddresses]);
     }
     function register_user_in_order($token, $user)
     {
@@ -2532,8 +2588,8 @@ private function get_all_roles() {
     }
     public function register_users($token, $personGroup, $user)
     {
-        $datas = array();
-        // Normalize $user: accept WP_User or array with first element
+        $datas = [];
+        // نرمال‌سازی $user: پذیرش WP_User یا آرایه‌ای با اولین عضو
         if (is_array($user)) {
             $user = reset($user);
         }
@@ -2546,7 +2602,7 @@ private function get_all_roles() {
 
         $datas = $this->convert_user_to_people($user, 0, $personGroup);
 
-        $result = $this->set_all_data($token, array('people' => array($datas['people']), 'visitorPeople' => array($datas['visitor'])));
+        $result = $this->set_all_data($token, ['people' => [$datas['people']], 'visitorPeople' => [$datas['visitor']]]);
         
         if(is_string($result)){
             $result_ids = json_decode($result, true)['data']['Data']['Objects']['People']['Results'];
@@ -2575,7 +2631,7 @@ private function get_all_roles() {
 
 
 
-        $people = array(
+        $people = [
             "firstname" => $first_name,
             "lastname" => $last_name,
             "personType" => 0,
@@ -2595,9 +2651,9 @@ private function get_all_roles() {
             "balance" => 0,
             "comment" => "",
             "userID" => $user->ID
-        );
+        ];
         $data['people'] = $people;
-        $data['address'] = array(
+        $data['address'] = [
             "personClientId" => $person_clinet_id,
             "title" =>  BAZARA_PERSON_ADDRESS_TITLE,
             "cityCode" => 0,
@@ -2605,14 +2661,21 @@ private function get_all_roles() {
             "longitude" => 0,
             "latitude" => 0,
             "postalCode" => empty($billing_postcode) ? '0' : $billing_postcode
-        );
+        ];
 
-        $data['visitor'] = array(
+        $data['visitor'] = [
             "personClientId" => $person_clinet_id,
             "visitorId" =>  (int)$this->visitor_options['VisitorId']
-        );
+        ];
         return $data;
     }
+    /*
+    |--------------------------------------------------------------------------
+    | ارسال سفارش‌های ووکامرس به بازارا
+    |--------------------------------------------------------------------------
+    | سفارش‌های جدید و سفارش‌های باقی‌مانده را پیدا کرده و پس از ارسال موفق
+    | وضعیت آخرین سفارش همگام‌شده را ثبت می‌کند.
+    */
     public function start_sync_orders($token = null)
     {
         $hpos_enable = get_option('woocommerce_custom_orders_table_enabled') === 'yes';
@@ -2645,7 +2708,7 @@ private function get_all_roles() {
         }
 
         // دریافت سفارش‌های جا‌مانده (ID >= left_behind_sync_limit و ID < max_id که هنوز سینک نشده‌اند)
-        $left_behind_orders = array();
+        $left_behind_orders = [];
         if ($left_behind_sync_limit !== null && $left_behind_sync_limit > 0 && $max_id > 0) {
             if (!$hpos_enable) {
                 $left_behind_orders = get_left_behind_orders_from_limit($left_behind_sync_limit, $max_id);
@@ -2678,7 +2741,7 @@ private function get_all_roles() {
             if (empty($token)) {
                 $token_result = $this->login_token();
                 if (!$token_result['success']) {
-                    return array('success' => false, 'message' => $token_result['message']);
+                    return ['success' => false, 'message' => $token_result['message']];
                 }
                 $token = $token_result['message'];
             }
@@ -2737,9 +2800,9 @@ private function get_all_roles() {
                 $message .= $error_message;
             }
             $message .= '*************************************************' . '<br/>';
-            return array('success' => true, 'message' => $message);
+            return ['success' => true, 'message' => $message];
         } else {
-            return array('success' => false, 'message' => "سفارشی جهت ارسال یافت نشد");
+            return ['success' => false, 'message' => "سفارشی جهت ارسال یافت نشد"];
         }
     }
     private function get_bank_id($token, $bankCode = 0)
@@ -2747,13 +2810,13 @@ private function get_all_roles() {
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
 
-        $result = $this->get_all_data($token, array('fromBankVersion' => 0));
+        $result = $this->get_all_data($token, ['fromBankVersion' => 0]);
         if (!$result['success'])
-            return array('success' => false, 'message' => $result['message']);
+            return ['success' => false, 'message' => $result['message']];
 
         foreach ($result['message']['Banks'] as $bank) {
 
@@ -2764,6 +2827,13 @@ private function get_all_roles() {
         return null;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | آماده‌سازی و ارسال یک سفارش به API
+    |--------------------------------------------------------------------------
+    | اطلاعات مشتری، اقلام سفارش، موجودی، پرداخت و جزئیات تحویل را به ساختار
+    | قابل ارسال بازارا تبدیل می‌کند و پاسخ آن را پردازش می‌کند.
+    */
     public function bazara_save_order($order_id, $token)
     {
         set_time_limit(0);
@@ -2771,17 +2841,17 @@ private function get_all_roles() {
         if (class_exists("OrderStatus")) {
             // بررسی وضعیت سفارش
             if (!is_order_status_valid($order_id)) {
-                return array(
+                return [
                     'success' => false,
                     'message' => 'سفارش با شناسه ' . $order_id . ' وضعیت مجاز برای همگام‌سازی ندارد.'
-                );
+                ];
             }
         }
 
         if (empty($token)) {
             $token_result = $this->login_token();
             if (!$token_result['success'])
-                return array('success' => false, 'message' => $token_result['message']);
+                return ['success' => false, 'message' => $token_result['message']];
             $token = $token_result['message'];
         }
 
@@ -2845,8 +2915,8 @@ private function get_all_roles() {
 
 
         $order_customer = get_userdata($order_customer_id);
-        // Initialize with safe defaults
-        $user_person = array('mobile' => '', 'personId' => 0);
+        // مقداردهی اولیه با مقادیر پیش‌فرض امن
+        $user_person = ['mobile' => '', 'personId' => 0];
         $mahakID = 0;
         if (!empty($order_customer) && is_object($order_customer) && !empty($order_customer->ID)) {
             $user_person = $this->convert_user_to_people($order_customer, get_user_meta($order_customer->ID, 'mahak_id', true))['people'];
@@ -2856,7 +2926,7 @@ private function get_all_roles() {
             if (empty($mahakID) && !empty($order_customer) && is_object($order_customer) && !empty($order_customer->ID)) {
                 $user = get_user_by('id', $order_customer->ID);
                 if (!empty($user) && is_object($user) && !empty($user->ID)) {
-                    $this->register_user_in_order($token, array($user));
+                    $this->register_user_in_order($token, [$user]);
                     $mahakID = get_user_meta($order_customer->ID, 'mahak_id', true);
                 }
             }
@@ -2876,21 +2946,21 @@ private function get_all_roles() {
             $total_amount = get_post_meta($order_id, '_order_total', true);
             $wallet = get_post_meta($order_id, '_payment_method', true) == 'wallet';
             $order_shipping_cost = get_post_meta($order_id, '_order_shipping', true);
-		} else {
-			//HPOS
-			$payment_meta = get_order_item_meta_payment_hpos($order_id);
-			$shipping_meta = get_order_item_shipping_amount_hpos($order_id);
-			$payment_method_value = (!empty($payment_meta) && isset($payment_meta->payment_method)) ? $payment_meta->payment_method : '';
-			$CodPaymentMethod = bazara_payment_method_is_cod($payment_method_value);
-			$total_amount = (!empty($payment_meta) && isset($payment_meta->total_amount)) ? $payment_meta->total_amount : 0;
-			$wallet = ($payment_method_value === 'wallet');
-			$order_shipping_cost = (!empty($shipping_meta) && isset($shipping_meta->cost)) ? $shipping_meta->cost : 0;
-		}
+        } else {
+            //HPOS
+            $payment_meta = get_order_item_meta_payment_hpos($order_id);
+            $shipping_meta = get_order_item_shipping_amount_hpos($order_id);
+            $payment_method_value = (!empty($payment_meta) && isset($payment_meta->payment_method)) ? $payment_meta->payment_method : '';
+            $CodPaymentMethod = bazara_payment_method_is_cod($payment_method_value);
+            $total_amount = (!empty($payment_meta) && isset($payment_meta->total_amount)) ? $payment_meta->total_amount : 0;
+            $wallet = ($payment_method_value === 'wallet');
+            $order_shipping_cost = (!empty($shipping_meta) && isset($shipping_meta->cost)) ? $shipping_meta->cost : 0;
+        }
  
         $completed_date = get_post_meta($order_id, '_paid_date', true);
-		if (empty($completed_date)) {
-			$completed_date = !empty($ps) && isset($ps->post_date) ? $ps->post_date : current_time('mysql');
-		}
+        if (empty($completed_date)) {
+            $completed_date = !empty($ps) && isset($ps->post_date) ? $ps->post_date : current_time('mysql');
+        }
 
         $completed_date = normalize_datetime_to_gregorian($completed_date);
 
@@ -2939,7 +3009,7 @@ private function get_all_roles() {
         $cheqid = bazara_get_last_client_id('cheque') + 1;
         $db_item_discount = get_order_item_discount($order_id);
         $total_discount = isset($db_item_discount->discount) ? (float)$db_item_discount->discount : 0;
-        $orders = array();
+        $orders = [];
 
         //HPOS
         // if (!$hpos_enable) {
@@ -2993,46 +3063,46 @@ private function get_all_roles() {
         // error_log('$cityName: ' . $cityName);
         // error_log('[BAZARA] $city = ' . print_r($city, true));
 
-		// Derive CityId from $city result
-		$cityId = 0;
-		if (is_array($city) && !empty($city)) {
-			$firstCity = reset($city);
-			if (is_object($firstCity) && isset($firstCity->CityID)) {
-				$cityId = (int) $firstCity->CityID;
-			} elseif (is_array($firstCity) && isset($firstCity['CityID'])) {
-				$cityId = (int) $firstCity['CityID'];
-			}
-		}
+        // استخراج CityId از نتیجه $city
+        $cityId = 0;
+        if (is_array($city) && !empty($city)) {
+            $firstCity = reset($city);
+            if (is_object($firstCity) && isset($firstCity->CityID)) {
+                $cityId = (int) $firstCity->CityID;
+            } elseif (is_array($firstCity) && isset($firstCity['CityID'])) {
+                $cityId = (int) $firstCity['CityID'];
+            }
+        }
 
-		$shippingAddress = array(
+        $shippingAddress = [
             'Title' => BAZARA_PERSON_ADDRESS_TITLE . ' - ' . $first_name . ' ' . $last_name,
             'Address' => $State . ' - ' . $cityName . ' - ' . $address,
             'PostalCode' => $postCode,
             'Tel' => $phone,
             'Mobile' => $user_person['mobile'],
-			'CityId' => $cityId,
+            'CityId' => $cityId,
             'Latitude' => 0,
             'Longitude' => 0
-        );
+        ];
 
-		// error_log('[BAZARA] $shippingAddress = ' . print_r($shippingAddress, true));
+        // error_log('[BAZARA] $shippingAddress = ' . print_r($shippingAddress, true));
 
         $SoftwareCurrency = $options['selectCurrencySoftware'];
         $PluginCurrency = $options['selectCurrencyPlugin'];
         $serial = 0;
         $serialUsed = false;
 
-		foreach ($order->get_items() as $item_key => $item) {
-			$item_data = is_object($item) && method_exists($item, 'get_data') ? (array)$item->get_data() : array();
-			$item_name = isset($item_data['name']) ? $item_data['name'] : '';
-			if ($item_name == "Wallet Topup" && class_exists("bazaraTeraWallet")) {
+        foreach ($order->get_items() as $item_key => $item) {
+            $item_data = is_object($item) && method_exists($item, 'get_data') ? (array)$item->get_data() : [];
+            $item_name = isset($item_data['name']) ? $item_data['name'] : '';
+            if ($item_name == "Wallet Topup" && class_exists("bazaraTeraWallet")) {
                 if ($SoftwareCurrency == 'rial' && $PluginCurrency == 'toman') {
                     $total_amount *= 10;
                 } else if ($SoftwareCurrency == 'toman' && $PluginCurrency == 'rial') {
                     $total_amount /= 10;
                 }
                 $product_orders['receipts'] =
-                    array(
+                    [
                         'personId' => (int)$user_person['personId'],
                         'cashAmount' => 0,
                         'cashCode' => (int)$cashCode,
@@ -3043,10 +3113,10 @@ private function get_all_roles() {
                         'date' => $completed_date,
                         'description' => 'بابت افزایش اعتبار'
 
-                    );
+                    ];
 
                 $product_orders['cheques'] =
-                    array(
+                    [
                         'amount' => $total_amount,
                         'cashCode' => (int)$cashCode,
                         'bankId' => (int)$bankCode,
@@ -3059,11 +3129,11 @@ private function get_all_roles() {
                         'date' => $completed_date,
                         'description' => 'بابت افزایش اعتبار'
 
-                    );
-                $data = array(
-                    'cheques' => array($product_orders['cheques']),
-                    'receipts' => array($product_orders['receipts'])
-                );
+                    ];
+                $data = [
+                    'cheques' => [$product_orders['cheques']],
+                    'receipts' => [$product_orders['receipts']]
+                ];
                 $result = $this->set_all_data($token, $data);
 
                 $o_id = json_decode($result, true)['data'];
@@ -3088,7 +3158,7 @@ private function get_all_roles() {
                 foreach ($clientIds as $key => $value) {
                     bazara_update_client_id($key, $value);
                 }
-                return array('success' => true, 'message' => '');
+                return ['success' => true, 'message' => ''];
             }
             $db_item = get_order_item_meta($item_key);
             $atrr_meta = get_order_item_pa_meta($item_key);
@@ -3123,7 +3193,7 @@ private function get_all_roles() {
                 $i = 0;
                 $visibleAttrs = array_column($getProductAttributes, 'visibleAttrs');
                 $count = 0;
-                $vals = array();
+                $vals = [];
 
                 foreach ($visibleAttrs as $visible) {
 
@@ -3183,7 +3253,7 @@ private function get_all_roles() {
                 $unit_price /= 10;
                 $total_row_discount /= 10;
             }
-            $orders[] = array();
+            $orders[] = [];
             $orderDetailClientID = bazara_get_last_client_id('order_detail') + 1;
 
 
@@ -3202,9 +3272,9 @@ private function get_all_roles() {
             
                 $among = $quantity;
                 
-                // Initialize orderDetails array if class exists (though this condition is redundant due to outer check)
+                // مقداردهی orderDetails در صورت وجود کلاس (این شرط با بررسی بیرونی تکراری است)
                 if (class_exists("sell_simple_with_date_variants")) {
-                    $product_orders['orderDetails'] = array();
+                    $product_orders['orderDetails'] = [];
                 }
             
                 foreach ($store_priority_value as $store) {
@@ -3213,9 +3283,9 @@ private function get_all_roles() {
                     if (!empty($storeAsset)) {
                         $Store_Id = $store;
             
-                        // Case 1: Store has enough stock to fulfill the entire quantity
+                        // حالت ۱: انبار موجودی کافی برای تأمین کل تعداد دارد
                         if ($storeAsset->Count1 >= $among) {
-                            $product_orders['orderDetails'][] = array(
+                            $product_orders['orderDetails'][] = [
                                 'orderClientId' => $orderClientID,
                                 'orderDetailClientId' => (int)$orderDetailClientID,
                                 'itemType' => 1,
@@ -3233,12 +3303,12 @@ private function get_all_roles() {
                                 'orderCode' => 0,
                                 'deleted' => false,
                                 'gift' => 0
-                            );
+                            ];
                             break;
                         } 
-                        // Case 2: Store has some stock but less than required
+                        // حالت ۲: انبار مقداری موجودی دارد، اما کمتر از مقدار لازم است
                         elseif ($storeAsset->Count1 > 0 && $storeAsset->Count1 < $among) {
-                            $product_orders['orderDetails'][] = array(
+                            $product_orders['orderDetails'][] = [
                                 'orderClientId' => $orderClientID,
                                 'orderDetailClientId' => (int)$orderDetailClientID,
                                 'itemType' => 1,
@@ -3256,11 +3326,11 @@ private function get_all_roles() {
                                 'orderCode' => 0,
                                 'deleted' => false,
                                 'gift' => 0
-                            );
+                            ];
                             $among -= $storeAsset->Count1;
                             continue;
                         } 
-                        // Case 3: Store has no stock
+                        // حالت ۳: انبار موجودی ندارد
                         elseif ($storeAsset->Count1 == 0) {
                             continue;
                         }
@@ -3270,7 +3340,7 @@ private function get_all_roles() {
                 //var_dump('2');
             
                 $Store_Id = $this->visitor_options['StoreID'];
-                $product_orders['orderDetails'][] = array(
+                $product_orders['orderDetails'][] = [
                     'orderClientId' => $orderClientID,
                     'orderDetailClientId' => (int)$orderDetailClientID,
                     'itemType' => 1,
@@ -3288,10 +3358,10 @@ private function get_all_roles() {
                     'orderCode' => 0,
                     'deleted' => false,
                     'gift' => 0
-                );
+                ];
             }
             
-            // Handle product serials
+            // پردازش سریال‌های محصول
             if (!empty($getProductSerials) && !class_exists("sell_simple_with_date_variants") && is_array($getProductSerials) && ($quantity - 1) > 0) {
                 //var_dump('3');
             
@@ -3301,7 +3371,7 @@ private function get_all_roles() {
                     $orderDetailClientID = bazara_get_last_client_id('order_detail') + 1;
                     $p_detail_id = $getProductSerials[$i + 1]['detail_id'];
                     
-                    $product_orders['orderDetails'][] = array(
+                    $product_orders['orderDetails'][] = [
                         'orderClientId' => $orderClientID,
                         'orderDetailClientId' => (int)$orderDetailClientID,
                         'itemType' => 1,
@@ -3319,14 +3389,14 @@ private function get_all_roles() {
                         'orderCode' => 0,
                         'deleted' => false,
                         'gift' => 0
-                    );
+                    ];
                 }
             } else {
                 //var_dump('4');
                 bazara_update_client_id('order_detail', $orderDetailClientID);
             }
             
-            // Handle case with sell_simple_with_date_variants and product serials
+            // پردازش حالت sell_simple_with_date_variants همراه با سریال‌های محصول
             if (class_exists("sell_simple_with_date_variants") && is_array($getProductSerials)) {
                 //var_dump('5');
             
@@ -3337,9 +3407,9 @@ private function get_all_roles() {
                     $storeAsset = get_product_assets($pdt['detail_id'], $Store_Id)[0];
             
                     if (!empty($storeAsset)) {
-                        // Case 1: Store has enough stock
+                        // حالت ۱: انبار موجودی کافی دارد
                         if ($storeAsset->Count1 >= $among) {
-                            $product_orders['orderDetails'][] = array(
+                            $product_orders['orderDetails'][] = [
                                 'orderClientId' => $orderClientID,
                                 'orderDetailClientId' => (int)$orderDetailClientID,
                                 'itemType' => 1,
@@ -3357,12 +3427,12 @@ private function get_all_roles() {
                                 'orderCode' => 0,
                                 'deleted' => false,
                                 'gift' => 0
-                            );
+                            ];
                             break;
                         } 
-                        // Case 2: Store has some stock but less than required
+                        // حالت ۲: انبار مقداری موجودی دارد، اما کمتر از مقدار لازم است
                         elseif ($storeAsset->Count1 > 0 && $storeAsset->Count1 < $among) {
-                            $product_orders['orderDetails'][] = array(
+                            $product_orders['orderDetails'][] = [
                                 'orderClientId' => $orderClientID,
                                 'orderDetailClientId' => (int)$orderDetailClientID,
                                 'itemType' => 1,
@@ -3380,7 +3450,7 @@ private function get_all_roles() {
                                 'orderCode' => 0,
                                 'deleted' => false,
                                 'gift' => 0
-                            );
+                            ];
                             $among -= $storeAsset->Count1;
                             continue;
                         }
@@ -3396,7 +3466,7 @@ private function get_all_roles() {
                 is_array($store_priority_value)
             ) {
                 // پاک کردن orderDetails قبلی برای شروع مجدد
-                $product_orders['orderDetails'] = array();
+                $product_orders['orderDetails'] = [];
 
                 // متغیرهای کنترل
                 $remaining_quantity = $quantity;
@@ -3423,7 +3493,7 @@ private function get_all_roles() {
                                     $orderDetailClientID = bazara_get_last_client_id('order_detail') + 1;
                                 }
 
-                                $product_orders['orderDetails'][] = array(
+                                $product_orders['orderDetails'][] = [
                                     'orderClientId'       => $orderClientID,
                                     'orderDetailClientId' => (int)$orderDetailClientID,
                                     'itemType'            => 1,
@@ -3441,7 +3511,7 @@ private function get_all_roles() {
                                     'orderCode'           => 0,
                                     'deleted'             => false,
                                     'gift'                => 0
-                                );
+                                ];
 
                                 $remaining_quantity -= $needed_quantity;
                                 $processed_quantity += $needed_quantity;
@@ -3464,7 +3534,7 @@ private function get_all_roles() {
                                 $orderDetailClientID = bazara_get_last_client_id('order_detail') + 1;
                             }
 
-                            $product_orders['orderDetails'][] = array(
+                            $product_orders['orderDetails'][] = [
                                 'orderClientId'       => $orderClientID,
                                 'orderDetailClientId' => (int)$orderDetailClientID,
                                 'itemType'            => 1,
@@ -3482,7 +3552,7 @@ private function get_all_roles() {
                                 'orderCode'           => 0,
                                 'deleted'             => false,
                                 'gift'                => 0
-                            );
+                            ];
 
                             $remaining_quantity -= $needed_quantity;
                             $processed_quantity += $needed_quantity;
@@ -3501,7 +3571,7 @@ private function get_all_roles() {
 
                     // می‌توانید تصمیم بگیرید که آیا سفارش را رد کنید یا با موجودی موجود ادامه دهید
                     echo 'موجودی کافی برای تأمین سفارش موجود نیست';
-                    return array('success' => false, 'message' => 'موجودی کافی برای تأمین سفارش موجود نیست');
+                    return ['success' => false, 'message' => 'موجودی کافی برای تأمین سفارش موجود نیست'];
                 }
 
                 // به‌روزرسانی orderDetailClientID برای استفاده در بخش‌های بعدی
@@ -3516,23 +3586,23 @@ private function get_all_roles() {
         }
 
         // echo "<pre>";
-		// var_dump($product_orders['orderDetails']);
-		// var_dump($order->get_items());
-		// var_dump(count($order->get_items()));
-		// var_dump(count($product_orders['orderDetails']));
-		// die;
+        // var_dump($product_orders['orderDetails']);
+        // var_dump($order->get_items());
+        // var_dump(count($order->get_items()));
+        // var_dump(count($product_orders['orderDetails']));
+        // die;
 
         if (empty($product_orders['orderDetails'])) {
             echo 'سفارش دارای اقلام نمی باشد. احتمالا محصولات از سایت حذف شده اند.';
-            return array('success' => false, 'message' => 'سفارش دارای اقلام نمی باشد. احتمالا محصولات از سایت حذف شده اند.');
+            return ['success' => false, 'message' => 'سفارش دارای اقلام نمی باشد. احتمالا محصولات از سایت حذف شده اند.'];
         }
 
         if (count($product_orders['orderDetails']) <> count($order->get_items())) {
             echo 'تعداد اقلام سفارش بیشتر از موجودی می باشد';
-            return array('success' => false, 'message' => 'تعداد اقلام سفارش بیشتر از موجودی می باشد');
+            return ['success' => false, 'message' => 'تعداد اقلام سفارش بیشتر از موجودی می باشد'];
         }
 
-        $order_items_quantities = array();
+        $order_items_quantities = [];
         foreach ($order->get_items() as $item_key => $item) {
             $db_item = get_order_item_meta($item_key);
             if (empty($db_item)) continue;
@@ -3547,7 +3617,7 @@ private function get_all_roles() {
             $order_items_quantities[$product_id] += $quantity;
         }
 
-        $order_details_quantities = array();
+        $order_details_quantities = [];
         foreach ($product_orders['orderDetails'] as $order_detail) {
             $product_detail_id = $order_detail['productDetailId'];
             if (!isset($order_details_quantities[$product_detail_id])) {
@@ -3561,40 +3631,40 @@ private function get_all_roles() {
             $product_detail_id = get_post_meta($product_id, 'mahak_product_detail_id', true);
             $diff_products = [];
 
-			foreach ($order_items_quantities as $product_id => $original_quantity) {
+            foreach ($order_items_quantities as $product_id => $original_quantity) {
 
-				$product_detail_id = get_post_meta($product_id, 'mahak_product_detail_id', true);
-				$system_quantity = $order_details_quantities[$product_detail_id] ?? 0;
+                $product_detail_id = get_post_meta($product_id, 'mahak_product_detail_id', true);
+                $system_quantity = $order_details_quantities[$product_detail_id] ?? 0;
 
-				if ($system_quantity != $original_quantity) {
+                if ($system_quantity != $original_quantity) {
 
-					$product = wc_get_product($product_id);
+                    $product = wc_get_product($product_id);
 
-					$diff_products[] = [
-						'product_id'        => $product_id,
-						'product_name'      => $product ? $product->get_name() : 'نامشخص',
-						'expected_quantity' => $original_quantity,
-						'system_quantity'   => $system_quantity,
-						'difference'        => $original_quantity - $system_quantity,
-						'product_detail_id' => $product_detail_id,
-					];
-				}
-			}
+                    $diff_products[] = [
+                        'product_id'        => $product_id,
+                        'product_name'      => $product ? $product->get_name() : 'نامشخص',
+                        'expected_quantity' => $original_quantity,
+                        'system_quantity'   => $system_quantity,
+                        'difference'        => $original_quantity - $system_quantity,
+                        'product_detail_id' => $product_detail_id,
+                    ];
+                }
+            }
 
         }
 
-		if (!empty($diff_products)) {
-			error_log('Bazara Quantity Mismatch: ' . print_r($diff_products, true));
-		}
+        if (!empty($diff_products)) {
+            error_log('Bazara Quantity Mismatch: ' . print_r($diff_products, true));
+        }
 
-		if (!empty($diff_products)) {
-			echo 'تعداد خریداری شده محصول با تعداد ثبت شده در سیستم مغایرت دارد';
-			return [
-				'success' => false,
-				'message' => 'مغایرت تعداد در محصولات زیر وجود دارد',
-				'details' => $diff_products
-			];
-		}
+        if (!empty($diff_products)) {
+            echo 'تعداد خریداری شده محصول با تعداد ثبت شده در سیستم مغایرت دارد';
+            return [
+                'success' => false,
+                'message' => 'مغایرت تعداد در محصولات زیر وجود دارد',
+                'details' => $diff_products
+            ];
+        }
 
         if ($SoftwareCurrency == 'rial' && $PluginCurrency == 'toman') {
 
@@ -3618,7 +3688,7 @@ private function get_all_roles() {
         }
 
         $product_orders['orders'] =
-            array(
+            [
                 'latitude' => 0,
                 'longitude' => 0,
                 'orderType' => 201,
@@ -3633,7 +3703,7 @@ private function get_all_roles() {
                 'receiptClientId' =>   (int)$orderClientID,
                 'deleted' => false,
                 'shippingAddress' => json_encode($shippingAddress)
-            );
+            ];
         if ($sendShipping) {
             $shippingPerson = $this->get_selected_shipping_person_id($ShippingMethod);
             if (!empty($shippingPerson)) {
@@ -3646,7 +3716,7 @@ private function get_all_roles() {
             }
         }
         $product_orders['receipts'] =
-            array(
+            [
                 'personId' => (int)$user_person['personId'],
                 'cashAmount' => 0,
                 'cashCode' => (int)$cashCode,
@@ -3657,10 +3727,10 @@ private function get_all_roles() {
                 'orderClientId' =>   (int)$orderClientID,
                 'date' => $completed_date,
 
-            );
+            ];
 
         $product_orders['cheques'] =
-            array(
+            [
                 'amount' => $total_amount,
                 'cashCode' => (int)$cashCode,
                 'bankId' => (int)$bankCode,
@@ -3673,19 +3743,19 @@ private function get_all_roles() {
                 'orderClientId' => (int)$orderClientID,
                 'date' => $completed_date,
 
-            );
+            ];
 
         if (($CodPaymentMethod || $total_amount == 0) && !$wallet) {
             unset($product_orders['receipts']);
             unset($product_orders['cheques']);
         }
-        $data = array(
-            'orders' => array($product_orders['orders']),
+        $data = [
+            'orders' => [$product_orders['orders']],
             'orderDetails' => $product_orders['orderDetails']
-        );
+        ];
         if (!$CodPaymentMethod && $total_amount > 0 && !$wallet) {
-            $data['receipts'] = array($product_orders['receipts']);
-            $data['cheques'] = array($product_orders['cheques']);
+            $data['receipts'] = [$product_orders['receipts']];
+            $data['cheques'] = [$product_orders['cheques']];
         }
         $result = $this->set_all_data($token, $data);
         if (is_string($result)) {
@@ -3744,12 +3814,12 @@ private function get_all_roles() {
                 $order_hpos->save();
             }
             $this->handle_order_errors($result, $order_id);
-            return array('success' => false, 'message' => '');
+            return ['success' => false, 'message' => ''];
         }
 
 
 
-        return array('success' => true, 'message' => json_encode($result));
+        return ['success' => true, 'message' => json_encode($result)];
     }
     private function get_selected_bank_id($payment_method, $orderid)
     {
@@ -3764,15 +3834,15 @@ private function get_all_roles() {
             $metaMethod = get_order_item_meta_payment_hpos($orderid)->payment_method;
         }
 
-		$banks = json_decode(stripslashes(isset($options['banksMethods']) ? $options['banksMethods'] : ''), true);
+        $banks = json_decode(stripslashes(isset($options['banksMethods']) ? $options['banksMethods'] : ''), true);
         if (empty($banks))
             return false;
         foreach ($banks as $bank) {
 
-			$bank_method = isset($bank['method']) ? $bank['method'] : null;
-			$bank_name = isset($bank['name']) ? $bank['name'] : null;
-			if ($bank_method !== null && in_array($bank_method, [$payment_method, $metaMethod]))
-				return $bank_name;
+            $bank_method = isset($bank['method']) ? $bank['method'] : null;
+            $bank_name = isset($bank['name']) ? $bank['name'] : null;
+            if ($bank_method !== null && in_array($bank_method, [$payment_method, $metaMethod]))
+                return $bank_name;
         }
         return false;
     }
@@ -3787,7 +3857,7 @@ private function get_all_roles() {
             $error = json_decode($error, true);
         }
     
-        // Check cheque result
+        // بررسی نتیجه چک
         if (
             isset($error['Data']['Objects']['Cheques']['Results'][0])
         ) {
@@ -3799,7 +3869,7 @@ private function get_all_roles() {
             bazara_update_client_id('cheque', $cheqid);
         }
     
-        // Check order detail result
+        // بررسی نتیجه جزئیات سفارش
         if (
             isset($error['Data']['Objects']['OrderDetails']['Results'][0])
         ) {
@@ -3811,7 +3881,7 @@ private function get_all_roles() {
             bazara_update_client_id('order_detail', $orderDetailID);
         }
     
-        // Check order result
+        // بررسی نتیجه سفارش
         if (
             isset($error['Data']['Objects']['Orders']['Results'][0])
         ) {
@@ -3863,21 +3933,21 @@ private function get_all_roles() {
 
     private function sync_combined_products($token, $min = 0, $max = 20)
     {
-        // Get latest versions for all related entities
+        // دریافت آخرین نسخه تمام موجودیت‌های مرتبط
         $product_latest_rv = empty(get_last_row_version("product")) ? 0 : (get_last_row_version("product"));
         $productDetail_latest_rv = empty(get_last_row_version("productDetail")) ? 0 : (get_last_row_version("productDetail"));
         $visitorProducts_latest_rv = empty(get_last_row_version("VisitorProducts")) ? 0 : (get_last_row_version("VisitorProducts"));
 
-        // Prepare combined data
-        $data = array(
+        // آماده‌سازی داده‌های ترکیبی
+        $data = [
             "fromProductVersion" => $product_latest_rv,
             "fromProductDetailVersion" => $productDetail_latest_rv,
             "fromVisitorProductVersion" => $visitorProducts_latest_rv
-        );
+        ];
 
         $product_result = $this->get_all_data($token, $data);
         if (!$product_result['success'])
-            return array('count' => 0, 'error' => $product_result['message'], 'success' => false);
+            return ['count' => 0, 'error' => $product_result['message'], 'success' => false];
 
         $this->visitor_options = get_bazara_visitor_options();
         $this->visitor_settings = get_bazara_visitor_settings();
@@ -3886,7 +3956,7 @@ private function get_all_roles() {
             return false;
         }
 
-        // Get tax and charge percent from settings
+        // دریافت درصد مالیات و عوارض از تنظیمات
         $ChargePercent = 0;
         $TaxPercent = 0;
         $visitorSettings = get_option('bazara_visitor_soft_settings', true);
@@ -3901,7 +3971,7 @@ private function get_all_roles() {
             }
         }
 
-        // Process Products
+        // پردازش محصولات
         if (!empty($product_result['message']['Products'])) {
 
             $Products = $product_result['message']['Products'];
@@ -3934,7 +4004,7 @@ private function get_all_roles() {
                 }
 
                 // داده محصول
-                $product_items = array(
+                $product_items = [
                     'ProductId'      => $product['ProductId'],
                     'ProductCode'    => $product['ProductCode'],
                     'ProductName'    => $product['Name'],
@@ -3956,7 +4026,7 @@ private function get_all_roles() {
                     'unitName2'      => $product['UnitName2'],
                     'unitRatio'      => $product['UnitRatio'],
                     'Deleted'        => $product['Deleted'] ? 1 : 0,
-                );
+                ];
 
                 // درج
                 insert('bazara_products', $product_items, 'ProductId', $product['ProductId']);
@@ -3970,7 +4040,7 @@ private function get_all_roles() {
         }
 
 
-        // Process ProductDetails
+        // پردازش جزئیات محصولات
         if (!empty($product_result['message']['ProductDetails'])) {
             $ProductDetails = $product_result['message']['ProductDetails'];
             usort($ProductDetails, function ($item1, $item2) {
@@ -4001,7 +4071,7 @@ private function get_all_roles() {
                     }
                 }
 
-                $product_items = array(
+                $product_items = [
                     'ProductId' => $productdetail['ProductId'],
                     'ProductDetailId' => $productdetail['ProductDetailId'],
                     'Properties' => ($productdetail['Properties']),
@@ -4011,7 +4081,7 @@ private function get_all_roles() {
                     'DefaultSellPriceLevel' => $productdetail['DefaultSellPriceLevel'],
                     'RowVersion' => $productdetail['RowVersion'],
                     'Deleted' => $productdetail['Deleted'] ? 1 : 0,
-                );
+                ];
 
                 insert('bazara_product_details', $product_items, 'ProductDetailId', $productdetail['ProductDetailId']);
                 bazara_update_latest_versions('productDetail', $productdetail['RowVersion']);
@@ -4024,7 +4094,7 @@ private function get_all_roles() {
             }
         }
 
-        // Process VisitorProducts
+        // پردازش محصولات ویزیتور
         if (!empty($product_result['message']['VisitorProducts'])) {
             $VisitorProducts = $product_result['message']['VisitorProducts'];
             usort($VisitorProducts, function ($item1, $item2) {
@@ -4038,13 +4108,13 @@ private function get_all_roles() {
                 if ($index <= $min) continue;
                 if ($index > $max) break;
 
-                $product_items = array(
+                $product_items = [
                     'VisitorProductId' => $visitorProduct['VisitorProductId'],
                     'ProductDetailId' => ($visitorProduct['ProductDetailId']),
                     'VisitorId' => $visitorProduct['VisitorId'],
                     'Deleted' => ($visitorProduct['Deleted'] == 'true' ? 1 : 0),
                     'RowVersion' => $visitorProduct['RowVersion'],
-                );
+                ];
 
                 insert('bazara_visitor_products', $product_items, 'VisitorProductId', $visitorProduct['VisitorProductId']);
                 $ProductID = get_product_id($visitorProduct['ProductDetailId']);
@@ -4052,153 +4122,153 @@ private function get_all_roles() {
             }
         }
 
-        return array('success' => true, 'message' => '');
+        return ['success' => true, 'message' => ''];
     }
     
-/**
- * سینک جداگانه Persons 
- * (VisitorPersons پردازش نمی‌شود - فقط نسخه آن ارسال می‌شود)
- */
-private function sync_combined_persons($token, $min = 0, $max = 20)
-{
-    // دریافت آخرین نسخه‌ها
-    $person_latest_rv        = get_last_row_version("Persons") ?: 0;
-    $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
+    /**
+     * سینک جداگانه Persons
+     * (VisitorPersons پردازش نمی‌شود - فقط نسخه آن ارسال می‌شود)
+     */
+    private function sync_combined_persons($token, $min = 0, $max = 20)
+    {
+        // دریافت آخرین نسخه‌ها
+        $person_latest_rv        = get_last_row_version("Persons") ?: 0;
+        $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
 
-    // آماده‌سازی داده برای API - هر دو نسخه ارسال می‌شود
-    $data = array(
-        "fromPersonVersion"       => $person_latest_rv,
-        "fromVisitorPersonVersion"=> $visitorPerson_latest_rv,
-    );
+        // آماده‌سازی داده برای API - هر دو نسخه ارسال می‌شود
+        $data = [
+            "fromPersonVersion"       => $person_latest_rv,
+            "fromVisitorPersonVersion"=> $visitorPerson_latest_rv,
+        ];
 
-    // دریافت داده از سرور
-    $result = $this->get_all_data($token, $data);
+        // دریافت داده از سرور
+        $result = $this->get_all_data($token, $data);
 
-    if (!$result['success']) {
-        return array('count' => 0, 'error' => $result['message'], 'success' => false);
-    }
-
-    $processedPersons = 0;
-    $batchSize = $max;
-
-    // ==================== Process Persons فقط ====================
-    if (!empty($result['message']['People'])) {
-        $Peoples = $result['message']['People'];
-
-        // مرتب‌سازی بر اساس RowVersion
-        usort($Peoples, function ($a, $b) {
-            return $a['RowVersion'] <=> $b['RowVersion'];
-        });
-
-        foreach ($Peoples as $People) {
-            if ($processedPersons >= $batchSize) {
-                break;
-            }
-
-            $processedPersons++;
-
-            $person_items = array(
-                'PersonId'       => $People['PersonId'],
-                'PersonClientId' => $People['PersonClientId'] ?? null,
-                'PersonGroupId'  => $People['PersonGroupId'] ?? null,
-                'PersonCode'     => $People['PersonCode'] ?? null,
-                'FirstName'      => $People['FirstName'] ?? '',
-                'LastName'       => $People['LastName'] ?? '',
-                'Email'          => $People['Email'] ?? null,
-                'Deleted'        => ($People['Deleted'] == 'true' ? 1 : 0),
-                'RowVersion'     => $People['RowVersion'],
-                'isSync'         => 0,
-                'Mobile'         => $People['Mobile'] ?? null,
-                'Address'        => $People['Address'] ?? null,
-            );
-
-            // درج رکورد
-            insert('bazara_persons', $person_items, 'PersonId', $People['PersonId']);
-
-            // به‌روزرسانی نسخه
-            bazara_update_latest_versions('persons', $People['RowVersion']);
+        if (!$result['success']) {
+            return ['count' => 0, 'error' => $result['message'], 'success' => false];
         }
-    }
 
-    // لاگ برای دیباگ
-    if ($processedPersons > 0) {
-        error_log("Synced {$processedPersons} Persons successfully. Last RowVersion updated.");
-    }
+        $processedPersons = 0;
+        $batchSize = $max;
 
-    return array(
-        'success' => true,
-        'count'   => $processedPersons,
-        'message' => "{$processedPersons} person(s) processed successfully."
-    );
-}
+        // ==================== پردازش اشخاص ====================
+        if (!empty($result['message']['People'])) {
+            $Peoples = $result['message']['People'];
+
+            // مرتب‌سازی بر اساس RowVersion
+            usort($Peoples, function ($a, $b) {
+                return $a['RowVersion'] <=> $b['RowVersion'];
+            });
+
+            foreach ($Peoples as $People) {
+                if ($processedPersons >= $batchSize) {
+                    break;
+                }
+
+                $processedPersons++;
+
+                $person_items = [
+                    'PersonId'       => $People['PersonId'],
+                    'PersonClientId' => $People['PersonClientId'] ?? null,
+                    'PersonGroupId'  => $People['PersonGroupId'] ?? null,
+                    'PersonCode'     => $People['PersonCode'] ?? null,
+                    'FirstName'      => $People['FirstName'] ?? '',
+                    'LastName'       => $People['LastName'] ?? '',
+                    'Email'          => $People['Email'] ?? null,
+                    'Deleted'        => ($People['Deleted'] == 'true' ? 1 : 0),
+                    'RowVersion'     => $People['RowVersion'],
+                    'isSync'         => 0,
+                    'Mobile'         => $People['Mobile'] ?? null,
+                    'Address'        => $People['Address'] ?? null,
+                ];
+
+                // درج رکورد
+                insert('bazara_persons', $person_items, 'PersonId', $People['PersonId']);
+
+                // به‌روزرسانی نسخه
+                bazara_update_latest_versions('persons', $People['RowVersion']);
+            }
+        }
+
+        // لاگ برای دیباگ
+        if ($processedPersons > 0) {
+            error_log("Synced {$processedPersons} Persons successfully. Last RowVersion updated.");
+        }
+
+        return [
+            'success' => true,
+            'count'   => $processedPersons,
+            'message' => "{$processedPersons} person(s) processed successfully."
+        ];
+    }
     
     /**
  * سینک جداگانه VisitorPersons
  */
-private function sync_visitor_persons($token, $min = 0, $max = 20)
-{
-    // دریافت آخرین نسخه‌ها
-    $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
+    private function sync_visitor_persons($token, $min = 0, $max = 20)
+    {
+        // دریافت آخرین نسخه‌ها
+        $visitorPerson_latest_rv = get_last_row_version("VisitorPersons") ?: 0;
 
-    // آماده‌سازی داده برای API
-    $data = array(
-        "fromVisitorPersonVersion" => $visitorPerson_latest_rv,
-        // اگر نیاز به ارسال fromPersonVersion هم هست، می‌توانی اضافه کنی
-        // "fromPersonVersion" => get_last_row_version("Persons") ?: 0,
-    );
+        // آماده‌سازی داده برای API
+        $data = [
+            "fromVisitorPersonVersion" => $visitorPerson_latest_rv,
+            // اگر نیاز به ارسال fromPersonVersion هم هست، می‌توانی اضافه کنی
+            // "fromPersonVersion" => get_last_row_version("Persons") ?: 0,
+        ];
 
-    // دریافت داده از سرور
-    $result = $this->get_all_data($token, $data);
+        // دریافت داده از سرور
+        $result = $this->get_all_data($token, $data);
 
-    if (!$result['success']) {
-        return array('count' => 0, 'error' => $result['message'], 'success' => false);
-    }
-
-    $processedCount = 0;
-    $batchSize = $max;
-
-    // ==================== Process VisitorPersons ====================
-    if (!empty($result['message']['VisitorPeople'])) {   // <<< مهم: نام کلید را چک کن
-        $VisitorPersons = $result['message']['VisitorPeople'];
-
-        // مرتب‌سازی بر اساس RowVersion
-        usort($VisitorPersons, function ($a, $b) {
-            return $a['RowVersion'] <=> $b['RowVersion'];
-        });
-
-        foreach ($VisitorPersons as $visitorPerson) {
-            if ($processedCount >= $batchSize) {
-                break;
-            }
-
-            $processedCount++;
-
-            $visitor_items = array(
-                'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
-                'PersonId'        => $visitorPerson['PersonId'] ?? null,
-                'VisitorId'       => $visitorPerson['VisitorId'] ?? null,
-                'Deleted'         => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
-                'RowVersion'      => $visitorPerson['RowVersion'],
-                // سایر فیلدهای مورد نیاز را اینجا اضافه کنید
-            );
-
-            // درج در جدول
-            insert('bazara_visitor_persons', $visitor_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
-
-            // به‌روزرسانی آخرین نسخه
-            bazara_update_latest_versions('VisitorPersons', $visitorPerson['RowVersion']);
+        if (!$result['success']) {
+            return ['count' => 0, 'error' => $result['message'], 'success' => false];
         }
-    }
 
-    // لاگ برای دیباگ
-    if ($processedCount > 0) {
-        error_log("Synced {$processedCount} VisitorPersons successfully.");
-    }
+        $processedCount = 0;
+        $batchSize = $max;
 
-    return array(
-        'success' => true,
-        'count'   => $processedCount,
-        'message' => "{$processedCount} visitor person(s) processed successfully."
-    );
-}
+        // ==================== پردازش اشخاص ویزیتور ====================
+        if (!empty($result['message']['VisitorPeople'])) {   // <<< مهم: نام کلید را چک کن
+            $VisitorPersons = $result['message']['VisitorPeople'];
+
+            // مرتب‌سازی بر اساس RowVersion
+            usort($VisitorPersons, function ($a, $b) {
+                return $a['RowVersion'] <=> $b['RowVersion'];
+            });
+
+            foreach ($VisitorPersons as $visitorPerson) {
+                if ($processedCount >= $batchSize) {
+                    break;
+                }
+
+                $processedCount++;
+
+                $visitor_items = [
+                    'VisitorPersonId' => $visitorPerson['VisitorPersonId'],
+                    'PersonId'        => $visitorPerson['PersonId'] ?? null,
+                    'VisitorId'       => $visitorPerson['VisitorId'] ?? null,
+                    'Deleted'         => ($visitorPerson['Deleted'] == 'true' ? 1 : 0),
+                    'RowVersion'      => $visitorPerson['RowVersion'],
+                    // سایر فیلدهای مورد نیاز را اینجا اضافه کنید
+                ];
+
+                // درج در جدول
+                insert('bazara_visitor_persons', $visitor_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
+
+                // به‌روزرسانی آخرین نسخه
+                bazara_update_latest_versions('VisitorPersons', $visitorPerson['RowVersion']);
+            }
+        }
+
+        // لاگ برای دیباگ
+        if ($processedCount > 0) {
+            error_log("Synced {$processedCount} VisitorPersons successfully.");
+        }
+
+        return [
+            'success' => true,
+            'count'   => $processedCount,
+            'message' => "{$processedCount} visitor person(s) processed successfully."
+        ];
+    }
 }
