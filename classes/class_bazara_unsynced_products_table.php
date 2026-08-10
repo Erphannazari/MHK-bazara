@@ -3,25 +3,36 @@ if (!class_exists('WP_List_Table')) {
     require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 }
 
-class Bazara_Unsynced_Products_Table extends WP_List_Table {
+class Bazara_Unsynced_Products_Table extends WP_List_Table
+{
 
     private $api_data_cache = null;
+    //supp
+    private $details_by_product = [];       // ProductId → آرایه‌ی جزئیات
+    private $not_converted_by_detail = [];  // ProductDetailId → موجودی تبدیل‌نشده
+    private $db_row_by_sku = [];            // ProductCode → ردیف کامل
+    private $woo_id_by_sku = null;
+    protected $woo_trashed_by_sku = [];
+
+    // null = بچ نشده (fallback به wc_get_product_id_by_sku)
+
 
     // ═══════════════ تنظیمات سینک ═══════════════
     private $sync_settings = [
-            'title'       => false,  // chkTitle - نام محصول
-            'price'       => false,  // chkPrice - قیمت
-            'stock'       => false,  // chkQuantity - موجودی
-            'image'       => false,  // chkPicture - تصاویر
-            'description' => false,  // description - توضیحات
-            'product'     => false,  // chkProduct - محصول (کلی)
+        'title' => false,  // chkTitle - نام محصول
+        'price' => false,  // chkPrice - قیمت
+        'stock' => false,  // chkQuantity - موجودی
+        'image' => false,  // chkPicture - تصاویر
+        'description' => false,  // description - توضیحات
+        'product' => false,  // chkProduct - محصول (کلی)
     ];
 
-    public function __construct() {
+    public function __construct()
+    {
         parent::__construct([
-                'singular' => __('Product', 'sp'),
-                'plural'   => __('Products', 'sp'),
-                'ajax'     => false
+            'singular' => __('Product', 'sp'),
+            'plural' => __('Products', 'sp'),
+            'ajax' => false
         ]);
 
         // بارگذاری تنظیمات سینک
@@ -32,31 +43,34 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
      * بارگذاری تنظیمات سینک از دیتابیس
      * کلیدهای واقعی: chkTitle, chkPrice, chkQuantity, chkPicture, description
      */
-    private function load_sync_settings() {
+    private function load_sync_settings()
+    {
         $options = get_option('bazara_visitor_settings', []);
 
         $this->sync_settings = [
-                'title'       => !empty($options['chkTitle']),      // نام محصول
-                'price'       => !empty($options['chkPrice']),      // قیمت
-                'stock'       => !empty($options['chkQuantity']),   // موجودی
-                'image'       => !empty($options['chkPicture']),    // تصاویر
-                'description' => !empty($options['description']),   // توضیحات
-                'product'     => !empty($options['chkProduct']),    // محصول کلی
+            'title' => !empty($options['chkTitle']),      // نام محصول
+            'price' => !empty($options['chkPrice']),      // قیمت
+            'stock' => !empty($options['chkQuantity']),   // موجودی
+            'image' => !empty($options['chkPicture']),    // تصاویر
+            'description' => !empty($options['description']),   // توضیحات
+            'product' => !empty($options['chkProduct']),    // محصول کلی
         ];
     }
 
     /**
      * بررسی فعال بودن یک نوع سینک
      */
-    public function is_sync_enabled($type) {
+    public function is_sync_enabled($type)
+    {
         return isset($this->sync_settings[$type]) && $this->sync_settings[$type];
     }
 
-    public function get_columns() {
+    public function get_columns()
+    {
         $columns = [
-                'cb'          => '<input type="checkbox" />',
-                'ProductCode' => __('کد محصول', 'sp'),
-                'ProductName' => __('نام محصول', 'sp'),
+            'cb' => '<input type="checkbox" />',
+            'ProductCode' => __('کد محصول', 'sp'),
+            'ProductName' => __('نام محصول', 'sp'),
         ];
 
         // ستون‌های شرطی بر اساس تنظیمات سینک
@@ -85,7 +99,8 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         return $columns;
     }
 
-    protected function extra_tablenav($which) {
+    protected function extra_tablenav($which)
+    {
         if ($which == 'top') {
             $source_a = isset($_REQUEST['source_a']) ? $_REQUEST['source_a'] : 'db';
 
@@ -99,7 +114,8 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
             $api_token = isset($_REQUEST['mahak_api_token']) ? $_REQUEST['mahak_api_token'] : '';
             ?>
-            <div class="alignleft actions" style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px; flex-wrap: wrap; background: #fff; padding: 8px; border: 1px solid #ddd;">
+            <div class="alignleft actions"
+                style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px; flex-wrap: wrap; background: #fff; padding: 8px; border: 1px solid #ddd;">
                 <span style="font-weight: bold; color: #2271b1;">منبع A (مبنا):</span>
                 <select name="source_a" id="source_a">
                     <option value="db" <?php selected($source_a, 'db'); ?>>دیتابیس افزونه (Local DB)</option>
@@ -112,38 +128,42 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                 <select name="source_b" id="source_b">
                 </select>
 
-                <input type="text" name="mahak_api_token" id="mahak_api_token"
-                       value="<?php echo esc_attr($api_token); ?>"
-                       placeholder="توکن API (Bearer)"
-                       style="width: 200px; display: none;">
+                <input type="text" name="mahak_api_token" id="mahak_api_token" value="<?php echo esc_attr($api_token); ?>"
+                    placeholder="توکن API (Bearer)" style="width: 200px; display: none;">
 
                 <input type="submit" name="filter_action" class="button button-primary" value="بررسی مغایرت‌ها">
             </div>
 
             <!-- ═══════════════ نوار وضعیت تنظیمات سینک ═══════════════ -->
-            <div class="alignleft" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 12px 15px; border: 1px solid #dee2e6; border-radius: 6px; margin: 10px 0; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div class="alignleft"
+                style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 12px 15px; border: 1px solid #dee2e6; border-radius: 6px; margin: 10px 0; width: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                 <span style="font-weight: bold; color: #495057; margin-left: 15px;">
                     <span class="dashicons dashicons-admin-settings" style="color: #6c757d;"></span>
                     وضعیت تنظیمات سینک:
                 </span>
 
-                <span style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('title') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
+                <span
+                    style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('title') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
                     <?php echo $this->is_sync_enabled('title') ? '✅' : '❌'; ?> نام
                 </span>
 
-                <span style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('price') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
+                <span
+                    style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('price') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
                     <?php echo $this->is_sync_enabled('price') ? '✅' : '❌'; ?> قیمت
                 </span>
 
-                <span style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('stock') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
+                <span
+                    style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('stock') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
                     <?php echo $this->is_sync_enabled('stock') ? '✅' : '❌'; ?> موجودی
                 </span>
 
-                <span style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('image') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
+                <span
+                    style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('image') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
                     <?php echo $this->is_sync_enabled('image') ? '✅' : '❌'; ?> تصویر
                 </span>
 
-                <span style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('description') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
+                <span
+                    style="margin: 0 8px; padding: 4px 10px; border-radius: 4px; font-size: 12px; <?php echo $this->is_sync_enabled('description') ? 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;' : 'background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;'; ?>">
                     <?php echo $this->is_sync_enabled('description') ? '✅' : '❌'; ?> توضیحات
                 </span>
 
@@ -155,7 +175,7 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
             </div>
 
             <script>
-                jQuery(document).ready(function($){
+                jQuery(document).ready(function ($) {
                     var srcA = $('#source_a');
                     var srcB = $('#source_b');
                     var tokenInput = $('#mahak_api_token');
@@ -176,7 +196,7 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                         }
                     }
 
-                    srcA.change(function() {
+                    srcA.change(function () {
                         currentB = '';
                         updateSourceB();
                     });
@@ -187,7 +207,8 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         }
     }
 
-    public function get_bulk_actions() {
+    public function get_bulk_actions()
+    {
         $actions = [];
 
         // فقط اکشن‌های مرتبط با سینک‌های فعال را نمایش بده
@@ -220,11 +241,12 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
      * تابع اصلی prepare_items - با فیلتر Deleted=1
      * ═══════════════════════════════════════════════════════════════════════════
      */
-    public function prepare_items() {
+    public function prepare_items()
+    {
         $this->process_bulk_action();
 
-        $columns  = $this->get_columns();
-        $hidden   = [];
+        $columns = $this->get_columns();
+        $hidden = [];
         $sortable = [];
         $this->_column_headers = [$columns, $hidden, $sortable];
 
@@ -232,23 +254,43 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
         $source_a_type = isset($_REQUEST['source_a']) ? $_REQUEST['source_a'] : 'db';
         $source_b_type = isset($_REQUEST['source_b']) ? $_REQUEST['source_b'] : 'woo';
-        $api_token     = isset($_REQUEST['mahak_api_token']) ? $_REQUEST['mahak_api_token'] : '';
+        $api_token = isset($_REQUEST['mahak_api_token']) ? $_REQUEST['mahak_api_token'] : '';
 
         // ═══════════════════════════════════════════════════════════════════════════
         // 🔴 تغییر اصلی: فیلتر کردن محصولات حذف‌شده (Deleted=1)
         // فقط محصولاتی که Deleted=0 یا Deleted IS NULL هستند بارگذاری می‌شوند
         // ═══════════════════════════════════════════════════════════════════════════
+        // $all_products = $wpdb->get_results(
+        //         "SELECT ProductCode, ProductName, Post_ID, ProductId, Deleted 
+        //      FROM {$wpdb->prefix}bazara_products 
+        //      WHERE (Deleted = 0 OR Deleted IS NULL)"
+        // );
+        // supp
         $all_products = $wpdb->get_results(
-                "SELECT ProductCode, ProductName, Post_ID, ProductId, Deleted 
-             FROM {$wpdb->prefix}bazara_products 
-             WHERE (Deleted = 0 OR Deleted IS NULL)"
+            "SELECT * FROM {$wpdb->prefix}bazara_products 
+     WHERE (Deleted = 0 OR Deleted IS NULL)"
         );
+
+        // ساخت map ها برای حذف کوئری‌های per-product
+        $this->db_row_by_sku = [];
+        if ($all_products) {
+            foreach ($all_products as $p) {
+                $sku = trim($p->ProductCode);
+                if ($sku !== '')
+                    $this->db_row_by_sku[$sku] = $p;
+            }
+            $this->preload_product_details($all_products);
+            $this->preload_woo_sku_ids($all_products, $source_b_type);
+        }
+
+
 
         $data = [];
 
         foreach ($all_products as $p_row) {
             $sku = trim($p_row->ProductCode);
-            if (empty($sku)) continue;
+            if (empty($sku))
+                continue;
 
             // ═══════════════════════════════════════════════════════════════════════════
             // 🔴 بررسی دوباره برای اطمینان (در صورتی که کوئری فیلتر نکرده باشد)
@@ -266,6 +308,17 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
             if ($source_a_type === 'db' && $item_a && isset($item_a->Deleted) && $item_a->Deleted == 1) {
                 continue;
             }
+
+
+            // 🔴 بررسی Deleted در آیتم خام دریافتی از منبع B (اگر از DB باشد)
+            if ($source_b_type === 'db' && $item_b && isset($item_b->Deleted) && $item_b->Deleted == 1) {
+                continue;
+            }
+
+            if ($source_a_type === 'woo' && isset($this->woo_trashed_by_sku[$sku]))
+                continue;
+            if ($source_b_type === 'woo' && isset($this->woo_trashed_by_sku[$sku]))
+                continue;
 
             $std_a = $this->extract_standard_attributes($item_a, $source_a_type);
             $std_b = $this->extract_standard_attributes($item_b, $source_b_type);
@@ -307,9 +360,9 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                     }
 
                     if (
-                            abs($std_a['length'] - $std_b['length']) > 0.1 ||
-                            abs($std_a['width']  - $std_b['width'])  > 0.1 ||
-                            abs($std_a['height'] - $std_b['height']) > 0.1
+                        abs($std_a['length'] - $std_b['length']) > 0.1 ||
+                        abs($std_a['width'] - $std_b['width']) > 0.1 ||
+                        abs($std_a['height'] - $std_b['height']) > 0.1
                     ) {
                         $reasons[] = 'ابعاد';
                     }
@@ -339,12 +392,14 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
             if (!empty($reasons)) {
                 $data[] = [
-                        'ProductCode'     => $sku,
-                        'std_a'           => $std_a,
-                        'std_b'           => $std_b,
-                        'mismatch_reason' => implode('، ', $reasons)
+                    'ProductCode' => $sku,
+                    'std_a' => $std_a,
+                    'std_b' => $std_b,
+                    'mismatch_reason' => implode('، ', $reasons)
                 ];
             }
+            unset($item_a, $item_b, $std_a, $std_b); //supp
+
         }
 
         $per_page = 20;
@@ -354,27 +409,31 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
         $this->items = $data;
         $this->set_pagination_args([
-                'total_items' => $total_items,
-                'per_page'    => $per_page,
-                'total_pages' => ceil($total_items / $per_page)
+            'total_items' => $total_items,
+            'per_page' => $per_page,
+            'total_pages' => ceil($total_items / $per_page)
         ]);
     }
 
     // ═══════════════ ستون‌ها ═══════════════
 
-    function column_cb($item) {
+    function column_cb($item)
+    {
         return sprintf('<input type="checkbox" name="sync_items[]" value="%s" />', $item['ProductCode']);
     }
 
-    function column_ProductCode($item) {
+    function column_ProductCode($item)
+    {
         return '<b style="direction:ltr; display:inline-block;">' . esc_html($item['ProductCode']) . '</b>';
     }
 
-    function column_ProductName($item) {
+    function column_ProductName($item)
+    {
         return '<span style="font-weight:bold;">' . esc_html($item['std_a']['name']) . '</span>';
     }
 
-    function column_name_comparison($item) {
+    function column_name_comparison($item)
+    {
         if (!$this->is_sync_enabled('title')) {
             return '<span style="color:#aaa">غیرفعال</span>';
         }
@@ -385,13 +444,14 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
             return '<span style="color:#aaa">---</span>';
         }
         return sprintf(
-                '<div style="margin-bottom:5px;"><span style="color:#2271b1; font-weight:bold;">A:</span> %s</div><div><span style="color:#d63638; font-weight:bold;">B:</span> %s</div>',
-                esc_html($a),
-                esc_html($b)
+            '<div style="margin-bottom:5px;"><span style="color:#2271b1; font-weight:bold;">A:</span> %s</div><div><span style="color:#d63638; font-weight:bold;">B:</span> %s</div>',
+            esc_html($a),
+            esc_html($b)
         );
     }
 
-    function column_price_comparison($item) {
+    function column_price_comparison($item)
+    {
         if (!$this->is_sync_enabled('price')) {
             return '<span style="color:#aaa">غیرفعال</span>';
         }
@@ -404,13 +464,14 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         $show_a = number_format($item['std_a']['display_price']) . ' ' . $item['std_a']['currency_label'];
         $show_b = number_format($item['std_b']['display_price']) . ' ' . $item['std_b']['currency_label'];
         return sprintf(
-                '<div style="margin-bottom:5px;"><span style="color:#2271b1; font-weight:bold;">A:</span> %s</div><div><span style="color:#d63638; font-weight:bold;">B:</span> %s</div>',
-                $show_a,
-                $show_b
+            '<div style="margin-bottom:5px;"><span style="color:#2271b1; font-weight:bold;">A:</span> %s</div><div><span style="color:#d63638; font-weight:bold;">B:</span> %s</div>',
+            $show_a,
+            $show_b
         );
     }
 
-    function column_stock_comparison($item) {
+    function column_stock_comparison($item)
+    {
         if (!$this->is_sync_enabled('stock')) {
             return '<span style="color:#aaa">غیرفعال</span>';
         }
@@ -421,13 +482,14 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
             return '<span style="color:#aaa">---</span>';
         }
         return sprintf(
-                '<div style="margin-bottom:5px;"><span style="color:#2271b1; font-weight:bold;">A:</span> %s</div><div><span style="color:#d63638; font-weight:bold;">B:</span> %s</div>',
-                $a,
-                $b
+            '<div style="margin-bottom:5px;"><span style="color:#2271b1; font-weight:bold;">A:</span> %s</div><div><span style="color:#d63638; font-weight:bold;">B:</span> %s</div>',
+            $a,
+            $b
         );
     }
 
-    function column_detail_status($item) {
+    function column_detail_status($item)
+    {
         $diffs = [];
 
         if ($this->is_sync_enabled('description')) {
@@ -454,7 +516,8 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         return '<span style="color:#d63638">مغایرت: ' . implode('، ', $diffs) . '</span>';
     }
 
-    function column_image_status($item) {
+    function column_image_status($item)
+    {
         if (!$this->is_sync_enabled('image')) {
             return '<span style="color:#aaa">غیرفعال</span>';
         }
@@ -467,32 +530,37 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         }
 
         return sprintf(
-                '<span style="color:#d63638">A: %d تصویر | B: %d تصویر</span>',
-                $a_count,
-                $b_count
+            '<span style="color:#d63638">A: %d تصویر | B: %d تصویر</span>',
+            $a_count,
+            $b_count
         );
     }
 
-    function column_mismatch_reason($item) {
+    function column_mismatch_reason($item)
+    {
         return '<span style="color:#d63638; font-weight:bold;">' . esc_html($item['mismatch_reason']) . '</span>';
     }
 
-    function column_default($item, $column_name) {
+    function column_default($item, $column_name)
+    {
         return isset($item[$column_name]) ? $item[$column_name] : '';
     }
 
     // ═══════════════ توابع کمکی ═══════════════
 
-    private function normalize_string($str) {
-        $str = (string)$str;
+    private function normalize_string($str)
+    {
+        $str = (string) $str;
         $str = strip_tags($str);
         $str = preg_replace('/\s+/', '', $str);
         $str = str_replace(['ی', 'ک', '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['ي', 'ك', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], $str);
         return strtolower($str);
     }
 
-    private function generate_slug_from_name($name) {
-        if (empty($name)) return '';
+    private function generate_slug_from_name($name)
+    {
+        if (empty($name))
+            return '';
         $slug = trim($name);
         $slug = preg_replace('/\s+/', '-', $slug);
         $slug = preg_replace('/[^\p{L}\p{N}\-]/u', '', $slug);
@@ -503,13 +571,45 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
     // ═══════════════ دریافت داده ═══════════════
 
-    private function fetch_single_item_raw($sku, $source_type, $api_token = '') {
+    // private function fetch_single_item_raw($sku, $source_type, $api_token = '') {
+    //     global $wpdb;
+    //     if ($source_type === 'woo') {
+    //         $id = wc_get_product_id_by_sku($sku);
+    //         return $id ? wc_get_product($id) : null;
+    //     } elseif ($source_type === 'db') {
+    //         $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bazara_products WHERE ProductCode = %s", $sku));
+    //         return $row ? $row : null;
+    //     } elseif ($source_type === 'api') {
+    //         if ($this->api_data_cache === null) {
+    //             $this->api_data_cache = $this->fetch_all_api_data($api_token);
+    //         }
+    //         return isset($this->api_data_cache[$sku]) ? $this->api_data_cache[$sku] : null;
+    //     }
+    //     return null;
+    // }
+    //supp
+    private function fetch_single_item_raw($sku, $source_type, $api_token = '')
+    {
         global $wpdb;
         if ($source_type === 'woo') {
-            $id = wc_get_product_id_by_sku($sku);
+            $id = null;
+            if (is_array($this->woo_id_by_sku)) {
+                $id = isset($this->woo_id_by_sku[$sku]) ? $this->woo_id_by_sku[$sku] : 0;
+            } else {
+                $id = wc_get_product_id_by_sku($sku);
+            }
             return $id ? wc_get_product($id) : null;
+            if ($product && $product->get_status() === 'trash')
+                return null;
+            return $product;
         } elseif ($source_type === 'db') {
-            $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}bazara_products WHERE ProductCode = %s", $sku));
+            if (isset($this->db_row_by_sku[$sku]) && !($this->db_row_by_sku[$sku]->Deleted == 1)) {
+                return $this->db_row_by_sku[$sku];
+            }
+            $row = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}bazara_products WHERE ProductCode = %s AND (Deleted = 0 OR Deleted IS NULL)",
+                $sku
+            ));
             return $row ? $row : null;
         } elseif ($source_type === 'api') {
             if ($this->api_data_cache === null) {
@@ -520,17 +620,24 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         return null;
     }
 
-    private function fetch_all_api_data($token) {
-        if (empty($token)) return [];
+
+    private function fetch_all_api_data($token)
+    {
+        if (empty($token))
+            return [];
         $url = 'https://mahakacc.mahaksoft.com/API/v3/Sync/GetAllData';
         $payload = [
-                "fromBankVersion" => 0, "fromProductVersion" => 0, "fromProductDetailVersion" => 0,
-                "fromProductDetailStoreAssetVersion" => 0, "pageSize" => 10000
+            "fromBankVersion" => 0,
+            "fromProductVersion" => 0,
+            "fromProductDetailVersion" => 0,
+            "fromProductDetailStoreAssetVersion" => 0,
+            "pageSize" => 10000
         ];
         $args = [
-                'method' => 'POST', 'timeout' => 45,
-                'headers' => ['Authorization' => 'Bearer ' . trim($token), 'Content-Type' => 'application/json; charset=utf-8'],
-                'body' => json_encode($payload)
+            'method' => 'POST',
+            'timeout' => 45,
+            'headers' => ['Authorization' => 'Bearer ' . trim($token), 'Content-Type' => 'application/json; charset=utf-8'],
+            'body' => json_encode($payload)
         ];
         $response = wp_remote_post($url, $args);
         $data_map = [];
@@ -547,8 +654,9 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                 $assets_map = [];
                 if (!empty($objects->ProductDetailStoreAssets)) {
                     foreach ($objects->ProductDetailStoreAssets as $a) {
-                        if(!isset($assets_map[$a->ProductDetailId])) $assets_map[$a->ProductDetailId] = 0;
-                        $assets_map[$a->ProductDetailId] += (float)$a->Count1;
+                        if (!isset($assets_map[$a->ProductDetailId]))
+                            $assets_map[$a->ProductDetailId] = 0;
+                        $assets_map[$a->ProductDetailId] += (float) $a->Count1;
                     }
                 }
 
@@ -562,7 +670,8 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                         }
 
                         $sku = trim($p->ProductCode);
-                        if(empty($sku)) continue;
+                        if (empty($sku))
+                            continue;
 
                         $p->CalculatedPrice = 0;
                         $p->CalculatedStock = 0;
@@ -571,16 +680,18 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                             $p->Name = $p->ProductName;
                         }
 
-                        if(isset($details_map[$p->ProductId])) {
+                        if (isset($details_map[$p->ProductId])) {
                             $det = $details_map[$p->ProductId];
                             if (isset($det->Price1)) {
-                                $p->CalculatedPrice = (float)$det->Price1;
+                                $p->CalculatedPrice = (float) $det->Price1;
                             }
-                            if(isset($assets_map[$det->ProductDetailId])) {
+                            if (isset($assets_map[$det->ProductDetailId])) {
                                 $p->CalculatedStock = $assets_map[$det->ProductDetailId];
                             }
-                            if (isset($det->Weight)) $p->Weight = $det->Weight;
-                            if (isset($det->Description)) $p->Description = $det->Description;
+                            if (isset($det->Weight))
+                                $p->Weight = $det->Weight;
+                            if (isset($det->Description))
+                                $p->Description = $det->Description;
                         }
                         $data_map[$sku] = $p;
                     }
@@ -590,15 +701,181 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         return $data_map;
     }
 
-    private function extract_standard_attributes($item, $source_type) {
+    //supp
+    /**
+     * خواندن یکجا (بچ) جزئیات و موجودی همه‌ی محصولات
+     * جایگزین ~۲ کوئری سنگین per-product
+     */
+    private function preload_product_details($products)
+    {
+        global $wpdb;
+        $product_ids = [];
+        foreach ($products as $p) {
+            $pid = (int) $p->ProductId;
+            if ($pid > 0)
+                $product_ids[$pid] = $pid;
+        }
+        $product_ids = array_values($product_ids);
+        $this->details_by_product = [];
+        $this->not_converted_by_detail = [];
+        if (empty($product_ids))
+            return;
+
+        $details_table = $wpdb->prefix . 'bazara_product_details';
+        $assets_table = $wpdb->prefix . 'bazara_product_assets';
+
+        foreach (array_chunk($product_ids, 500) as $chunk_ids) {
+            $in = implode(',', array_map('intval', $chunk_ids));
+
+            $rows = $wpdb->get_results(
+                "SELECT detail.ProductDetailId as ProductDetailId,
+                        detail.ProductId as ProductId,
+                        detail.Properties as Properties,
+                        detail.Prices as Prices,
+                        detail.Deleted as Deleted,
+                        detail.Discounts as Discounts,
+                        detail.DefaultSellPriceLevel as DefaultSellPriceLevel,
+                        detail.DefaultDiscountLevel as DefaultDiscountLevel,
+                        detailAsset.Count1 as Count1,
+                        detailAsset.Count2 as Count2,
+                        detailAsset.ProductDetailStoreAssetId as ProductDetailStoreAssetId
+                 FROM {$details_table} as detail
+                 LEFT JOIN (SELECT ProductDetailId, SUM(Count1) as Count1, SUM(Count2) as Count2, MIN(ProductDetailStoreAssetId) as ProductDetailStoreAssetId
+                            FROM {$assets_table} GROUP BY ProductDetailId) as detailAsset
+                   ON detail.ProductDetailId = detailAsset.ProductDetailId
+                 WHERE detail.ProductId IN ({$in}) AND detail.Deleted = 0
+                 ORDER BY detail.p_d_id ASC"
+            );
+
+            if ($rows) {
+                foreach ($rows as $row) {
+                    $pid = (int) $row->ProductId;
+                    if (!isset($this->details_by_product[$pid])) {
+                        $this->details_by_product[$pid] = [];
+                    }
+                    $this->details_by_product[$pid][] = $row;
+                }
+
+                $detail_ids = [];
+                foreach ($rows as $row) {
+                    $did = (int) $row->ProductDetailId;
+                    if ($did > 0)
+                        $detail_ids[$did] = $did;
+                }
+                if (empty($detail_ids))
+                    continue;
+
+                $this->preload_not_converted_qty(array_values($detail_ids));
+            }
+        }
+    }
+
+    /**
+     * خواندن یکجا موجودی تبدیل‌نشده سفارش‌ها برای لیستی از ProductDetailId
+     */
+    private function preload_not_converted_qty($detail_ids)
+    {
+        global $wpdb;
+        $orders_table = $wpdb->prefix . 'bazara_orders';
+        $order_details_table = $wpdb->prefix . 'bazara_order_details';
+
+        $options = get_bazara_visitor_settings();
+        $max_id = !empty($options['order_id_greater_than']) ? (int) $options['order_id_greater_than'] : 0;
+
+        foreach (array_chunk($detail_ids, 500) as $chunk) {
+            $in = implode(',', array_map('intval', $chunk));
+            $qty_rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT od.ProductDetailId as ProductDetailId, IFNULL(SUM(od.Count1),0) as qty
+                 FROM `{$orders_table}` o
+                 JOIN `{$order_details_table}` od ON od.OrderId = o.OrderId
+                 WHERE o.orderCode = 0 AND o.Deleted = false AND od.Deleted = false
+                   AND o.OrderClientId >= %d AND od.ProductDetailId IN ({$in})
+                 GROUP BY od.ProductDetailId",
+                $max_id
+            ));
+            if ($qty_rows) {
+                foreach ($qty_rows as $qr) {
+                    $this->not_converted_by_detail[(int) $qr->ProductDetailId] = (float) $qr->qty;
+                }
+            }
+        }
+    }
+
+    /**
+     * پیش‌حل یکباره SKU → post_id ووکامرس (روی postmeta._sku)
+     */
+    private function preload_woo_sku_ids($products, $source_b_type)
+    {
+        $this->woo_id_by_sku = null;
+        if ($source_b_type !== 'woo')
+            return;
+
+        global $wpdb;
+        $skus = [];
+        foreach ($products as $p) {
+            $sku = trim($p->ProductCode);
+            if ($sku !== '')
+                $skus[$sku] = $sku;
+        }
+        if (empty($skus))
+            return;
+
+        $this->woo_id_by_sku = [];
+        $this->woo_trashed_by_sku = [];
+        $postmeta = $wpdb->prefix . 'postmeta';
+        $posts = $wpdb->prefix . 'posts';
+
+        foreach (array_chunk(array_values($skus), 500) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '%s'));
+            $rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT pm.meta_value as sku, pm.post_id, p.post_status
+             FROM {$postmeta} pm
+             INNER JOIN {$posts} p ON p.ID = pm.post_id
+             WHERE pm.meta_key = '_sku' AND pm.meta_value IN ({$placeholders})
+               AND p.post_type = 'product'",
+                $chunk
+            ));
+            if ($rows) {
+                foreach ($rows as $r) {
+                    $rsku = trim($r->sku);
+                    $is_trashed = ($r->post_status === 'trash' || $r->post_status === 'auto-draft');
+                    if ($is_trashed) {
+                        if (!isset($this->woo_id_by_sku[$rsku])) {
+                            $this->woo_trashed_by_sku[$rsku] = true;
+                        }
+                    } else {
+                        $this->woo_id_by_sku[$rsku] = (int) $r->post_id;
+                        unset($this->woo_trashed_by_sku[$rsku]);
+                    }
+                }
+            }
+        }
+    }
+
+
+
+    private function extract_standard_attributes($item, $source_type)
+    {
         $attr = [
-                'name' => '', 'slug' => '', 'description' => '', 'short_description' => '',
-                'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0,
-                'category_id' => 0, 'stock' => 0, 'normalized_price_rial' => 0,
-                'display_price' => 0, 'currency_label' => '', 'images' => [], 'exists' => false
+            'name' => '',
+            'slug' => '',
+            'description' => '',
+            'short_description' => '',
+            'weight' => 0,
+            'length' => 0,
+            'width' => 0,
+            'height' => 0,
+            'category_id' => 0,
+            'stock' => 0,
+            'normalized_price_rial' => 0,
+            'display_price' => 0,
+            'currency_label' => '',
+            'images' => [],
+            'exists' => false
         ];
 
-        if (!$item) return $attr;
+        if (!$item)
+            return $attr;
         $attr['exists'] = true;
 
         // WOOCOMMERCE
@@ -607,14 +884,14 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
             $attr['slug'] = urldecode($item->get_slug());
             $attr['description'] = $item->get_description();
             $attr['short_description'] = $item->get_short_description();
-            $attr['weight'] = (float)$item->get_weight();
-            $attr['length'] = (float)$item->get_length();
-            $attr['width']  = (float)$item->get_width();
-            $attr['height'] = (float)$item->get_height();
-            $attr['stock'] = (float)$item->get_stock_quantity();
+            $attr['weight'] = (float) $item->get_weight();
+            $attr['length'] = (float) $item->get_length();
+            $attr['width'] = (float) $item->get_width();
+            $attr['height'] = (float) $item->get_height();
+            $attr['stock'] = (float) $item->get_stock_quantity();
             $cat_ids = $item->get_category_ids();
             $attr['category_id'] = !empty($cat_ids) ? $cat_ids[0] : 0;
-            $price = (float)$item->get_price();
+            $price = (float) $item->get_price();
             $attr['display_price'] = $price;
             $curr = get_woocommerce_currency();
             if ($curr == 'IRR') {
@@ -624,44 +901,78 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                 $attr['currency_label'] = 'تومان';
                 $attr['normalized_price_rial'] = $price * 10;
             }
-            if ($item->get_image_id()) $attr['images'][] = $item->get_image_id();
+            if ($item->get_image_id())
+                $attr['images'][] = $item->get_image_id();
         }
         // DB
         elseif ($source_type === 'db') {
             $attr['name'] = isset($item->ProductName) ? $item->ProductName : (isset($item->Name) ? $item->Name : '');
 
             $slug = '';
-            if (isset($item->Slug) && !empty($item->Slug)) $slug = $item->Slug;
-            elseif (isset($item->slug) && !empty($item->slug)) $slug = $item->slug;
-            elseif (isset($item->post_name) && !empty($item->post_name)) $slug = $item->post_name;
-            if (empty($slug) && !empty($attr['name'])) $slug = $this->generate_slug_from_name($attr['name']);
+            if (isset($item->Slug) && !empty($item->Slug))
+                $slug = $item->Slug;
+            elseif (isset($item->slug) && !empty($item->slug))
+                $slug = $item->slug;
+            elseif (isset($item->post_name) && !empty($item->post_name))
+                $slug = $item->post_name;
+            if (empty($slug) && !empty($attr['name']))
+                $slug = $this->generate_slug_from_name($attr['name']);
             $attr['slug'] = $slug;
 
-            if (isset($item->description)) $attr['description'] = $item->description;
-            elseif (isset($item->Description)) $attr['description'] = $item->Description;
+            if (isset($item->description))
+                $attr['description'] = $item->description;
+            elseif (isset($item->Description))
+                $attr['description'] = $item->Description;
 
-            $attr['weight'] = isset($item->weight) ? (float)$item->weight : (isset($item->Weight) ? (float)$item->Weight : 0);
-            $attr['length'] = isset($item->length) ? (float)$item->length : (isset($item->Length) ? (float)$item->Length : 0);
-            $attr['width']  = isset($item->width)  ? (float)$item->width  : (isset($item->Width)  ? (float)$item->Width  : 0);
-            $attr['height'] = isset($item->height) ? (float)$item->height : (isset($item->Height) ? (float)$item->Height : 0);
+            $attr['weight'] = isset($item->weight) ? (float) $item->weight : (isset($item->Weight) ? (float) $item->Weight : 0);
+            $attr['length'] = isset($item->length) ? (float) $item->length : (isset($item->Length) ? (float) $item->Length : 0);
+            $attr['width'] = isset($item->width) ? (float) $item->width : (isset($item->Width) ? (float) $item->Width : 0);
+            $attr['height'] = isset($item->height) ? (float) $item->height : (isset($item->Height) ? (float) $item->Height : 0);
             $attr['category_id'] = isset($item->Category) ? $item->Category : (isset($item->CategoryId) ? $item->CategoryId : 0);
 
-            $details = function_exists('get_product_details_unsynced') ? get_product_details_unsynced($item->ProductId, 0) : [];
+            // $details = function_exists('get_product_details_unsynced') ? get_product_details_unsynced($item->ProductId, 0) : [];
+            // $price = 0;
+            // $stock = 0;
+
+            // if (!empty($details)) {
+            //     $det = $details[0];
+            //     $stock = (float)$det->Count1;
+            //     if (function_exists('get_bazara_not_converted_qty')) {
+            //         $stock -= get_bazara_not_converted_qty($det->ProductDetailId);
+            //     }
+            //     $prices = json_decode($det->Prices, true);
+            //     $lvl = ($det->DefaultSellPriceLevel == -1 ? 1 : $det->DefaultSellPriceLevel);
+            //     if (isset($prices[$lvl]["Price{$lvl}"])) {
+            //         $price = (float)$prices[$lvl]["Price{$lvl}"];
+            //     }
+            // }
+            //supp
+            $pid = isset($item->ProductId) ? (int) $item->ProductId : 0;
+            $details = [];
+            if ($pid > 0 && isset($this->details_by_product[$pid])) {
+                $details = $this->details_by_product[$pid];
+            } elseif (function_exists('get_product_details_unsynced')) {
+                $details = get_product_details_unsynced($item->ProductId, 0);
+            }
             $price = 0;
             $stock = 0;
 
             if (!empty($details)) {
                 $det = $details[0];
-                $stock = (float)$det->Count1;
-                if (function_exists('get_bazara_not_converted_qty')) {
-                    $stock -= get_bazara_not_converted_qty($det->ProductDetailId);
+                $stock = (float) $det->Count1;
+                $did = (int) $det->ProductDetailId;
+                if (isset($this->not_converted_by_detail[$did])) {
+                    $stock -= $this->not_converted_by_detail[$did];
+                } elseif (function_exists('get_bazara_not_converted_qty')) {
+                    $stock -= get_bazara_not_converted_qty($did);
                 }
                 $prices = json_decode($det->Prices, true);
                 $lvl = ($det->DefaultSellPriceLevel == -1 ? 1 : $det->DefaultSellPriceLevel);
                 if (isset($prices[$lvl]["Price{$lvl}"])) {
-                    $price = (float)$prices[$lvl]["Price{$lvl}"];
+                    $price = (float) $prices[$lvl]["Price{$lvl}"];
                 }
             }
+
 
             $attr['stock'] = $stock;
             $attr['display_price'] = $price;
@@ -670,44 +981,62 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         }
         // API
         elseif ($source_type === 'api') {
-            if (isset($item->Name) && !empty($item->Name)) $attr['name'] = $item->Name;
-            elseif (isset($item->ProductName) && !empty($item->ProductName)) $attr['name'] = $item->ProductName;
-            elseif (isset($item->Title) && !empty($item->Title)) $attr['name'] = $item->Title;
+            if (isset($item->Name) && !empty($item->Name))
+                $attr['name'] = $item->Name;
+            elseif (isset($item->ProductName) && !empty($item->ProductName))
+                $attr['name'] = $item->ProductName;
+            elseif (isset($item->Title) && !empty($item->Title))
+                $attr['name'] = $item->Title;
 
             $slug = '';
-            if (isset($item->Slug) && !empty($item->Slug)) $slug = $item->Slug;
-            elseif (isset($item->slug) && !empty($item->slug)) $slug = $item->slug;
-            if (empty($slug) && !empty($attr['name'])) $slug = $this->generate_slug_from_name($attr['name']);
+            if (isset($item->Slug) && !empty($item->Slug))
+                $slug = $item->Slug;
+            elseif (isset($item->slug) && !empty($item->slug))
+                $slug = $item->slug;
+            if (empty($slug) && !empty($attr['name']))
+                $slug = $this->generate_slug_from_name($attr['name']);
             $attr['slug'] = $slug;
 
-            if (isset($item->Description) && !empty($item->Description)) $attr['description'] = $item->Description;
-            elseif (isset($item->description) && !empty($item->description)) $attr['description'] = $item->description;
+            if (isset($item->Description) && !empty($item->Description))
+                $attr['description'] = $item->Description;
+            elseif (isset($item->description) && !empty($item->description))
+                $attr['description'] = $item->description;
 
-            $attr['weight'] = isset($item->Weight) ? (float)$item->Weight : (isset($item->weight) ? (float)$item->weight : 0);
-            $attr['length'] = isset($item->Length) ? (float)$item->Length : (isset($item->length) ? (float)$item->length : 0);
-            $attr['width']  = isset($item->Width)  ? (float)$item->Width  : (isset($item->width)  ? (float)$item->width  : 0);
-            $attr['height'] = isset($item->Height) ? (float)$item->Height : (isset($item->height) ? (float)$item->height : 0);
+            $attr['weight'] = isset($item->Weight) ? (float) $item->Weight : (isset($item->weight) ? (float) $item->weight : 0);
+            $attr['length'] = isset($item->Length) ? (float) $item->Length : (isset($item->length) ? (float) $item->length : 0);
+            $attr['width'] = isset($item->Width) ? (float) $item->Width : (isset($item->width) ? (float) $item->width : 0);
+            $attr['height'] = isset($item->Height) ? (float) $item->Height : (isset($item->height) ? (float) $item->height : 0);
 
-            if (isset($item->ProductCategoryId)) $attr['category_id'] = $item->ProductCategoryId;
-            elseif (isset($item->CategoryId)) $attr['category_id'] = $item->CategoryId;
+            if (isset($item->ProductCategoryId))
+                $attr['category_id'] = $item->ProductCategoryId;
+            elseif (isset($item->CategoryId))
+                $attr['category_id'] = $item->CategoryId;
 
             $price = 0;
-            if (isset($item->CalculatedPrice) && $item->CalculatedPrice > 0) $price = (float)$item->CalculatedPrice;
-            elseif (isset($item->Price1) && $item->Price1 > 0) $price = (float)$item->Price1;
-            elseif (isset($item->Price) && $item->Price > 0) $price = (float)$item->Price;
+            if (isset($item->CalculatedPrice) && $item->CalculatedPrice > 0)
+                $price = (float) $item->CalculatedPrice;
+            elseif (isset($item->Price1) && $item->Price1 > 0)
+                $price = (float) $item->Price1;
+            elseif (isset($item->Price) && $item->Price > 0)
+                $price = (float) $item->Price;
 
             $stock = 0;
-            if (isset($item->CalculatedStock)) $stock = (float)$item->CalculatedStock;
-            elseif (isset($item->Stock)) $stock = (float)$item->Stock;
-            elseif (isset($item->Count1)) $stock = (float)$item->Count1;
+            if (isset($item->CalculatedStock))
+                $stock = (float) $item->CalculatedStock;
+            elseif (isset($item->Stock))
+                $stock = (float) $item->Stock;
+            elseif (isset($item->Count1))
+                $stock = (float) $item->Count1;
 
             $attr['stock'] = $stock;
             $attr['display_price'] = $price;
             $attr['currency_label'] = 'ریال';
             $attr['normalized_price_rial'] = $price;
 
-            if (isset($item->Images) && is_array($item->Images)) $attr['images'] = $item->Images;
-            elseif (isset($item->ImageUrl) && !empty($item->ImageUrl)) $attr['images'][] = $item->ImageUrl;
+            if (isset($item->Images) && is_array($item->Images))
+                $attr['images'] = $item->Images;
+            elseif (isset($item->ImageUrl) && !empty($item->ImageUrl))
+                $attr['images'][] = $item->ImageUrl;
         }
 
         return $attr;
@@ -715,12 +1044,15 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
     // ═══════════════ عملیات سینک ═══════════════
 
-    public function process_bulk_action() {
+    public function process_bulk_action()
+    {
         $action = $this->current_action();
-        if (!$action || (strpos($action, 'bulk-') === false)) return;
+        if (!$action || (strpos($action, 'bulk-') === false))
+            return;
 
         $ids = isset($_POST['sync_items']) ? $_POST['sync_items'] : [];
-        if (empty($ids)) return;
+        if (empty($ids))
+            return;
 
         $sync_type = str_replace('bulk-', '', $action);
 
@@ -747,7 +1079,8 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         foreach ($ids as $sku) {
             $sku = sanitize_text_field($sku);
             $raw_data_a = $this->fetch_single_item_raw($sku, $source_a, $api_token);
-            if (!$raw_data_a) continue;
+            if (!$raw_data_a)
+                continue;
 
             $std_data_a = $this->extract_standard_attributes($raw_data_a, $source_a);
 
@@ -757,18 +1090,21 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
             } elseif ($source_b === 'db') {
                 $result = $this->update_local_db_product($sku, $std_data_a, $sync_type);
             }
-            if ($result) $success_count++;
+            if ($result)
+                $success_count++;
         }
 
         $redirect_url = remove_query_arg(['action', 'action2', 'sync_items', '_wp_http_referer', '_wpnonce']);
-        $redirect_url = add_query_arg(['synced_count' => $success_count, 'source_a'=>$source_a, 'source_b'=>$source_b, 'mahak_api_token'=>$api_token], $redirect_url);
+        $redirect_url = add_query_arg(['synced_count' => $success_count, 'source_a' => $source_a, 'source_b' => $source_b, 'mahak_api_token' => $api_token], $redirect_url);
         wp_redirect($redirect_url);
         exit;
     }
 
-    private function update_woocommerce_product($sku, $data, $sync_type) {
+    private function update_woocommerce_product($sku, $data, $sync_type)
+    {
         $pid = wc_get_product_id_by_sku($sku);
-        if (!$pid) return false;
+        if (!$pid)
+            return false;
         $product = wc_get_product($pid);
         $updated = false;
 
@@ -800,9 +1136,18 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                 $product->set_weight($data['weight']);
                 $updated = true;
             }
-            if (!empty($data['length'])) { $product->set_length($data['length']); $updated = true; }
-            if (!empty($data['width']))  { $product->set_width($data['width']);   $updated = true; }
-            if (!empty($data['height'])) { $product->set_height($data['height']); $updated = true; }
+            if (!empty($data['length'])) {
+                $product->set_length($data['length']);
+                $updated = true;
+            }
+            if (!empty($data['width'])) {
+                $product->set_width($data['width']);
+                $updated = true;
+            }
+            if (!empty($data['height'])) {
+                $product->set_height($data['height']);
+                $updated = true;
+            }
 
             if (!empty($data['category_id']) && function_exists('get_bazara_taxonomy_term')) {
                 $term_id = get_bazara_taxonomy_term($data['category_id']);
@@ -853,16 +1198,18 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         return false;
     }
 
-    private function update_local_db_product($sku, $data, $sync_type) {
+    private function update_local_db_product($sku, $data, $sync_type)
+    {
         global $wpdb;
         $table_name = $wpdb->prefix . 'bazara_products';
 
         $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table_name} WHERE ProductCode = %s", $sku));
-        if (!$row) return false;
+        if (!$row)
+            return false;
 
         $updated = false;
 
-        $find_val = function($keys, $source) {
+        $find_val = function ($keys, $source) {
             foreach ($keys as $k) {
                 if (isset($source[$k]) && $source[$k] !== '' && $source[$k] !== null) {
                     return $source[$k];
@@ -877,27 +1224,34 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
 
             if ($this->is_sync_enabled('title')) {
                 $name_val = $find_val(['name', 'Name', 'ProductName'], $data);
-                if ($name_val) $update_data['ProductName'] = $name_val;
+                if ($name_val)
+                    $update_data['ProductName'] = $name_val;
             }
 
             if ($this->is_sync_enabled('description')) {
                 $desc_val = $find_val(['description', 'Description', 'Desc'], $data);
-                if ($desc_val !== null) $update_data['Description'] = $desc_val;
+                if ($desc_val !== null)
+                    $update_data['Description'] = $desc_val;
             }
 
             $weight_val = $find_val(['weight', 'Weight', 'productWeight'], $data);
-            $len_val    = $find_val(['length', 'Length', 'L'], $data);
-            $width_val  = $find_val(['width', 'Width', 'W'], $data);
+            $len_val = $find_val(['length', 'Length', 'L'], $data);
+            $width_val = $find_val(['width', 'Width', 'W'], $data);
             $height_val = $find_val(['height', 'Height', 'H'], $data);
 
-            if ($weight_val !== null) $update_data['Weight'] = (float)$weight_val;
-            if ($len_val !== null)    $update_data['Length'] = (float)$len_val;
-            if ($width_val !== null)  $update_data['Width']  = (float)$width_val;
-            if ($height_val !== null) $update_data['Height'] = (float)$height_val;
+            if ($weight_val !== null)
+                $update_data['Weight'] = (float) $weight_val;
+            if ($len_val !== null)
+                $update_data['Length'] = (float) $len_val;
+            if ($width_val !== null)
+                $update_data['Width'] = (float) $width_val;
+            if ($height_val !== null)
+                $update_data['Height'] = (float) $height_val;
 
             if (count($update_data) > 1) {
                 $result = $wpdb->update($table_name, $update_data, ['ProductCode' => $sku]);
-                if ($result !== false) $updated = true;
+                if ($result !== false)
+                    $updated = true;
             }
         }
 
@@ -910,15 +1264,16 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                 if (!empty($details)) {
                     $det = $details[0];
                     $prices = json_decode($det->Prices, true);
-                    if (!is_array($prices)) $prices = [];
+                    if (!is_array($prices))
+                        $prices = [];
 
                     $lvl = ($det->DefaultSellPriceLevel == -1 ? 1 : $det->DefaultSellPriceLevel);
-                    $prices[$lvl]["Price{$lvl}"] = (int)$price_val;
+                    $prices[$lvl]["Price{$lvl}"] = (int) $price_val;
 
                     $wpdb->update(
-                            "{$wpdb->prefix}bazara_product_details",
-                            ['Prices' => json_encode($prices, JSON_UNESCAPED_UNICODE)],
-                            ['ProductDetailId' => $det->ProductDetailId]
+                        "{$wpdb->prefix}bazara_product_details",
+                        ['Prices' => json_encode($prices, JSON_UNESCAPED_UNICODE)],
+                        ['ProductDetailId' => $det->ProductDetailId]
                     );
                     $wpdb->update($table_name, ['priceSync' => 1], ['ProductCode' => $sku]);
                     $updated = true;
@@ -940,10 +1295,10 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
                         $wpdb->update("{$wpdb->prefix}bazara_product_assets", ['Count1' => $stock_val], ['ProductDetailStoreAssetId' => $exist]);
                     } else {
                         $wpdb->insert("{$wpdb->prefix}bazara_product_assets", [
-                                'ProductDetailId' => $det_id,
-                                'Count1' => $stock_val,
-                                'StoreId' => 1,
-                                'Deleted' => 0
+                            'ProductDetailId' => $det_id,
+                            'Count1' => $stock_val,
+                            'StoreId' => 1,
+                            'Deleted' => 0
                         ]);
                     }
                     $wpdb->update($table_name, ['stockSync' => 1], ['ProductCode' => $sku]);
