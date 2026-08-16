@@ -67,6 +67,7 @@ class bazara
        require_once plugin_dir_path( __FILE__ ) . 'libs/Enums.php';
        require_once plugin_dir_path( __FILE__ ) . 'classes/functions.php';
        require_once plugin_dir_path( __FILE__ ) . 'classes/class.bazara.api.php';
+       require_once plugin_dir_path( __FILE__ ) . 'classes/class.bazara.stock.guard.php';
 
        require_once plugin_dir_path( __FILE__ ) . 'classes/class.products.table.php';
        if(!function_exists('jalali_to_gregorian'))

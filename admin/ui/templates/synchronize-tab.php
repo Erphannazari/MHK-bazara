@@ -2,6 +2,8 @@
 defined( 'ABSPATH' ) || exit;
 $sync_interval = empty($visitor['refresh_interval']) ? '' : $visitor['refresh_interval'];
 $active_auto_sync = !empty($visitor['active_auto_sync']) && $visitor['active_auto_sync'];
+$sync_min = empty($visitor['sync_min']) ? 0 : intval($visitor['sync_min']);
+$sync_max = empty($visitor['sync_max']) ? 100000 : intval($visitor['sync_max']);
 
 ?>
 <div class="subform">
@@ -29,6 +31,23 @@ $active_auto_sync = !empty($visitor['active_auto_sync']) && $visitor['active_aut
             <strong style="text-align:center">بازه همگام سازی (دقیقه)</strong>
             <input type="number" id="bazara_options_refresh_interval" name="bazara_interval" class="" <?= !$active_auto_sync?'disabled' : ' '   ?> value="<?= $sync_interval?>" autocomplete="off" min="1">
             <span class="bazara-caption">عددی بزرگتر از صفر وارد کنید</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td width="5%"></td>
+        <td>
+          <div class="bazara-div_for_caption">
+            <label class="top-10">تعداد شروع همگام سازی</label>
+            <input type="number" id="bazara_options_sync_min" name="bazara_sync_min" value="<?= $sync_min?>" autocomplete="off" min="0">
+            <span class="bazara-caption">از چه ردیفی شروع شود (پیش‌فرض: 0)</span>
+          </div>
+        </td>
+        <td>
+          <div class="bazara-div_for_caption">
+            <strong style="text-align:center">تعداد پایان همگام سازی</strong>
+            <input type="number" id="bazara_options_sync_max" name="bazara_sync_max" value="<?= $sync_max?>" autocomplete="off" min="1">
+            <span class="bazara-caption">تا چه ردیفی همگام شود (پیش‌فرض: 100000)</span>
           </div>
         </td>
       </tr>

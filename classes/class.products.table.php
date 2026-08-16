@@ -314,12 +314,15 @@ function delete_product_images_by_sku($sku) {
 			}
 
 			$bazara = new BazaraApi(true);
+			$sync_opts = bazara_get_options();
+			$sync_min_val = isset($sync_opts['sync_min']) ? intval($sync_opts['sync_min']) : 0;
+			$sync_max_val = isset($sync_opts['sync_max']) ? intval($sync_opts['sync_max']) : 100000;
 
 			if($bulkAction == 'pictureSync'){
 				$result = $bazara->sync_pictures();
 			}else{
 				// Only sync the selected products
-				$result = $bazara->start_sync_new_product(0, 100000, true, $sync_ids);
+				$result = $bazara->start_sync_new_product($sync_min_val, $sync_max_val, true, $sync_ids);
 			}
 
 			if (isset($result['message']) && !empty($result['message'])) {

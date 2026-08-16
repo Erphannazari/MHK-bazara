@@ -20,6 +20,8 @@ $barcode_toggle = !empty($visitorOption['barcode']) && $visitorOption['barcode']
 $description_toggle = !empty($visitorOption['description']) && $visitorOption['description'];
 $categoryOrGroup_toggle = !empty($visitorOption['chkCategory'] );
 $store_priority_value = !empty($visitorOption['StoresSortOrder']) ? $visitorOption['StoresSortOrder'] : '';
+$realtime_stock_guard_toggle = !array_key_exists('chkRealtimeStockGuard', (array)$visitorOption)
+  || !empty($visitorOption['chkRealtimeStockGuard']);
 $product_status_radio = !empty($visitorOption['publishStatus']) && $visitorOption['publishStatus'] == 'publish';
 ?>
 <style>
@@ -68,6 +70,44 @@ $product_status_radio = !empty($visitorOption['publishStatus']) && $visitorOptio
         <input type="checkbox" id="chkQuantity" <?= !$sync_product_toggle  ? 'disabled':''?> name="chkQuantity" <?=  (!empty($visitorOption['chkQuantity']) && $visitorOption['chkQuantity'] ? 'checked' : '')?>> موجودی </label>
       <label>
         <input type="checkbox" id="chkUploadPics" <?= !$sync_product_toggle  ? 'disabled':''?> name="chkUploadPics" <?= (!empty($visitorOption['chkPicture']) && $visitorOption['chkPicture'] ? 'checked' : '')?>> تصاویر </label>
+    </div>
+    <hr>
+    <div class="product-section">
+      <table class="form-table">
+        <tbody>
+          <tr>
+            <th scope="row" valign="top" style="vertical-align: top;"></th>
+          </tr>
+          <tr>
+            <td width="5%">
+              <div class="input-switch">
+                <input
+                  type="checkbox"
+                  class="bazara_wp_products_inte"
+                  name="bazara_realtime_stock_guard"
+                  id="bazara_realtime_stock_guard"
+                  <?= $realtime_stock_guard_toggle ? 'checked' : '' ?>
+                >
+                <label for="bazara_realtime_stock_guard" class="small"></label>
+                <span class="status_text yes"></span>
+                <span class="status_text no"></span>
+              </div>
+            </td>
+            <td>
+              <div class="bazara-div_for_caption">
+                <label for="bazara_realtime_stock_guard" class="top-10">
+                  کنترل لحظه‌ای موجودی پیش از ثبت سفارش
+                </label>
+                <span class="bazara-caption">
+                  پیش از نهایی‌شدن خرید، آخرین تغییرات موجودی محک بررسی می‌شود تا
+                  از فروش بیشتر از موجودی قابل‌فروش جلوگیری شود. در صورت عدم نیاز
+                  می‌توانید این قابلیت را غیرفعال کنید تا در checkout اجرا نشود.
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
     <hr>
     <div class="product-section">

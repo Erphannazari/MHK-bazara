@@ -227,6 +227,8 @@ function init(){
                     password:jQuery('#bazara_options_password').val(),
                     refresh_interval:jQuery('#bazara_options_refresh_interval').val(),
                     active_auto_sync:jQuery('#bazara_intver_toggle').is(":checked"),
+                    sync_min:jQuery('#bazara_options_sync_min').val(),
+                    sync_max:jQuery('#bazara_options_sync_max').val(),
     
                 },
                 success : function( response ) {

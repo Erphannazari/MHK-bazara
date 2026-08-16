@@ -836,19 +836,15 @@ class Bazara_Unsynced_Products_Table extends WP_List_Table {
         if ($updated) {
             $saved_id = $product->save();
 
-            if ($sync_type === 'all' || $sync_type === 'detailSync') {
-                $post_update = ['ID' => $saved_id];
-                if ($this->is_sync_enabled('description')) {
-                    $post_update['post_content'] = $data['description'];
-                }
-                if ($this->is_sync_enabled('title') && !empty($data['slug'])) {
-                    $post_update['post_name'] = sanitize_title($data['slug']);
-                }
-                if (count($post_update) > 1) {
-                    wp_update_post($post_update);
-                }
-            }
-            return true;
+            $bazara = new BazaraApi(true);
+            $sync_opts = bazara_get_options();
+            $sync_min_val = isset($sync_opts['sync_min']) ? intval($sync_opts['sync_min']) : 0;
+            $sync_max_val = isset($sync_opts['sync_max']) ? intval($sync_opts['sync_max']) : 100000;
+            $message = $bazara->start_sync_new_product($sync_min_val, $sync_max_val, true)['message'];
+            // esc_url_raw() is used to prevent converting ampersand in url to "#038;"
+            // add_query_arg() return the current url
+            wp_redirect( esc_url_raw(add_query_arg()) );
+            exit;
         }
         return false;
     }

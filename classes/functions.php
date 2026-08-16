@@ -16,6 +16,8 @@ function bazara_options_default()
         'packageNumber'   => '',
         'banks' => '',
         'refresh_interval' => 5,
+        'sync_min' => 0,
+        'sync_max' => 100000,
         'publishStatus' => 'publish',
         'databaseVersion' => 0
     ];
@@ -48,6 +50,7 @@ function bazara_settings_visitor()
         'chkPicture'         => true,
         'chkTitle'           => true,
         'chkQuantity'        => true,
+        'chkRealtimeStockGuard' => true,
         'chkPrice'           => true,
         'chkOrder'           => true,
         'chkRadioGroup'      => true,
@@ -998,6 +1001,9 @@ function bazara_convert_request_to_options($hasRequest = false)
         'chkPicture'        => toggle_to_boolean(sanitize_text_field($_REQUEST['chkUploadPics'] ?? '')),
         'chkTitle'          => toggle_to_boolean(sanitize_text_field($_REQUEST['chkTitle'] ?? '')),
         'chkQuantity'       => toggle_to_boolean(sanitize_text_field($_REQUEST['chkQuantity'] ?? '')),
+        'chkRealtimeStockGuard' => toggle_to_boolean(
+            sanitize_text_field($_REQUEST['bazara_realtime_stock_guard'] ?? '')
+        ),
         'chkPrice'          => toggle_to_boolean(sanitize_text_field($_REQUEST['chkPrice'] ?? '')),
         'chkExcludedProductsByCategory' => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_except_category'] ?? '')),
         'ExcludedProductsByCategory'    => sanitize_text_field($_REQUEST['ExcludedProductsByCategory'] ?? ''),
@@ -1086,7 +1092,8 @@ function bazara_save_visitor_setting()
         'active_auto_sync'                  => $active_sync,
         'publishStatus' => isset($_REQUEST['publishStatus']) ? sanitize_text_field($_REQUEST['publishStatus']) : '',
         'databaseVersion'                  => $options['databaseVersion'],
-
+        'sync_min'                          => isset($_REQUEST['sync_min']) ? absint($_REQUEST['sync_min']) : 0,
+        'sync_max'                          => isset($_REQUEST['sync_max']) ? absint($_REQUEST['sync_max']) : 100000,
     ];
     if (!$active_sync)
         $options['refresh_interval'] = 0;
@@ -3240,6 +3247,8 @@ add_action('admin_post_nopriv_clear_tables_queue', 'clear_tables_queue');
 function bazara_run_product_synchronize()
 {
     $bazara_options = bazara_get_options();
+    $sync_min = isset($bazara_options['sync_min']) ? intval($bazara_options['sync_min']) : 0;
+    $sync_max = isset($bazara_options['sync_max']) ? intval($bazara_options['sync_max']) : 100000;
 
     if (isset($bazara_options['CreditDay']) && $bazara_options['CreditDay'] < 0) {
         bazara_save_log(date_i18n('Y-m-j'), 'اتمام اعتبار', 'expired', 'error');
@@ -3279,7 +3288,7 @@ function bazara_run_product_synchronize()
             $entities[] = 'Transactions';
 
         for ($i = 0; $i < count($entities); $i++) {
-            $bazara->bazara_copy_entities($entities[$i], 0, 100000);
+            $bazara->bazara_copy_entities($entities[$i], $sync_min, $sync_max);
             // bazara_save_log(date_i18n('Y-m-j'),'در حال همگام سازی',json_encode($entities[$i]),'test');
         }
 
@@ -3290,7 +3299,7 @@ function bazara_run_product_synchronize()
             if ($syncCategory)
                 $bazara->start_sync_category(null, $syncCategory);
 
-            $message = $bazara->start_sync_new_product(0, 10000, true)['message'];
+            $message = $bazara->start_sync_new_product($sync_min, $sync_max > 10000 ? 10000 : $sync_max, true)['message'];
             clear_junk_data();
         }
 
@@ -3300,7 +3309,7 @@ function bazara_run_product_synchronize()
     }
 
     if (class_exists('bazara_addOns')) {
-        $bazara->bazara_copy_entities("Transactions", 0, 100000);
+        $bazara->bazara_copy_entities("Transactions", $sync_min, $sync_max);
     }
 
     // سینک اشخاص به cron جداگانه خود منتقل شد (bazara_run_persons_sync)
@@ -3612,6 +3621,70 @@ function get_wp_roles()
         $wp_roles = new WP_Roles();
     return $wp_roles->get_names();
 }
+
+if (bazara_stock_guard_is_enabled()) {
+    add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
+}
+
+/**
+ * برای نصب‌های قبلی که هنوز کلید تنظیمات را ندارند، رفتار محافظه‌کارانه و
+ * سازگار با قابلیت قدیمی، فعال‌بودن Stock Guard است.
+ */
+function bazara_stock_guard_is_enabled()
+{
+    $settings = get_bazara_visitor_settings();
+
+    if (!array_key_exists('chkRealtimeStockGuard', $settings)) {
+        return true;
+    }
+
+    return !empty($settings['chkRealtimeStockGuard']);
+}
+
+/*
+|--------------------------------------------------------------------------
+| کنترل موجودی واقعی پیش از نهایی‌شدن خرید
+|--------------------------------------------------------------------------
+| تغییرات موجودی محک فقط یک‌بار و به‌صورت افزایشی دریافت می‌شوند. سپس تمام
+| اقلام سبد با queryهای گروهی بررسی می‌شوند تا ضمن جلوگیری از فروش بیش‌ازحد،
+| زمان checkout با تعداد اقلام سبد رشد خطیِ query به‌ازای هر Detail نداشته باشد.
+*/
+function bazara_check_stock_realtime()
+{
+    if (!bazara_stock_guard_is_enabled()) {
+        return;
+    }
+
+    if (!class_exists('BazaraApi') || !class_exists('Bazara_Stock_Guard')) {
+        return;
+    }
+
+    $woocommerce = WC();
+
+    if (!$woocommerce || !$woocommerce->cart) {
+        return;
+    }
+
+    global $wpdb;
+
+    $guard = new Bazara_Stock_Guard(new BazaraApi(true), $wpdb);
+    $errors = $guard->validate_cart($woocommerce->cart->get_cart());
+
+    foreach ($errors as $error) {
+        wc_add_notice(
+            sprintf(
+                __(
+                    'متأسفانه موجودی محصول «%1$s» برای تکمیل خرید کافی نیست. موجودی فعلی: %2$s',
+                    'bazara'
+                ),
+                $error['name'],
+                wc_format_decimal($error['available_stock'], 2)
+            ),
+            'error'
+        );
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | محاسبه تعداد کالاهای واصل‌نشده از سفارشات وردپرس

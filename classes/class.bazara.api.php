@@ -168,7 +168,217 @@ class BazaraApi
             'success' => true,
             'message' => $decoded['Data']['Objects']
         ];
-    }    
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | دریافت سریع تغییرات موجودی برای کنترل نهایی خرید
+    |--------------------------------------------------------------------------
+    | فقط تغییرات بعد از آخرین اجرای Stock Guard دریافت می‌شوند. نسخه‌های این
+    | مسیر از سینک اصلی جدا هستند تا بررسی checkout باعث جاافتادن سینک محصول،
+    | قیمت یا جزئیات در فرآیند عادی افزونه نشود.
+    */
+    public function quick_fetch_stock_changes()
+    {
+        global $wpdb;
+
+        $main_versions = get_option('bazara_latest_versions', []);
+        $guard_versions = get_option('bazara_stock_guard_versions', []);
+        $versions = array_merge(
+            [
+                'ProductAsset' => 0,
+                'product' => 0,
+                'productDetail' => 0,
+            ],
+            is_array($main_versions) ? $main_versions : [],
+            is_array($guard_versions) ? $guard_versions : []
+        );
+
+        $response = $this->get_all_data(
+            '',
+            [
+                'fromProductDetailStoreAssetVersion' => $versions['ProductAsset'],
+                'fromProductVersion' => $versions['product'],
+                'fromProductDetailVersion' => $versions['productDetail'],
+            ]
+        );
+
+        if (empty($response['success']) || !is_array($response['message'] ?? null)) {
+            return false;
+        }
+
+        $data = $response['message'];
+        $product_details = $data['ProductDetails'] ?? [];
+        $products = $data['Products'] ?? [];
+        $assets = $data['ProductDetailStoreAssets'] ?? [];
+
+        $existing_detail_ids = $this->stock_guard_existing_ids(
+            'bazara_product_details',
+            'ProductDetailId',
+            array_column($product_details, 'ProductDetailId')
+        );
+        $existing_product_ids = $this->stock_guard_existing_ids(
+            'bazara_products',
+            'ProductId',
+            array_column($products, 'ProductId')
+        );
+        $existing_asset_ids = $this->stock_guard_existing_ids(
+            'bazara_product_assets',
+            'ProductDetailStoreAssetId',
+            array_column($assets, 'ProductDetailStoreAssetId')
+        );
+
+        foreach ($product_details as $product_detail) {
+            $detail_id = (int)($product_detail['ProductDetailId'] ?? 0);
+
+            if ($detail_id <= 0) {
+                continue;
+            }
+
+            $detail_data = [
+                'ProductDetailId' => $detail_id,
+                'ProductId' => (int)($product_detail['ProductId'] ?? 0),
+                'Deleted' => (int)($product_detail['Deleted'] ?? 0),
+                'Properties' => $product_detail['Properties'] ?? null,
+                'RowVersion' => $product_detail['RowVersion'] ?? 0,
+            ];
+
+            $result = isset($existing_detail_ids[$detail_id])
+                ? $wpdb->update(
+                    "{$wpdb->prefix}bazara_product_details",
+                    $detail_data,
+                    ['ProductDetailId' => $detail_id]
+                )
+                : $wpdb->insert("{$wpdb->prefix}bazara_product_details", $detail_data);
+
+            if ($result === false) {
+                return false;
+            }
+
+            $versions['productDetail'] = $this->stock_guard_latest_row_version(
+                $versions['productDetail'],
+                $product_detail['RowVersion'] ?? 0
+            );
+        }
+
+        foreach ($products as $product) {
+            $product_id = (int)($product['ProductId'] ?? 0);
+
+            if ($product_id <= 0) {
+                continue;
+            }
+
+            if (isset($existing_product_ids[$product_id])) {
+                $result = $wpdb->update(
+                    "{$wpdb->prefix}bazara_products",
+                    ['Deleted' => (int)($product['Deleted'] ?? 0)],
+                    ['ProductId' => $product_id]
+                );
+
+                if ($result === false) {
+                    return false;
+                }
+            }
+
+            $versions['product'] = $this->stock_guard_latest_row_version(
+                $versions['product'],
+                $product['RowVersion'] ?? 0
+            );
+        }
+
+        foreach ($assets as $asset) {
+            $asset_id = (int)($asset['ProductDetailStoreAssetId'] ?? 0);
+
+            if ($asset_id <= 0) {
+                continue;
+            }
+
+            $asset_data = [
+                'ProductDetailStoreAssetId' => $asset_id,
+                'ProductDetailId' => (int)($asset['ProductDetailId'] ?? 0),
+                'Count1' => (float)($asset['Count1'] ?? 0),
+                'Count2' => (float)($asset['Count2'] ?? 0),
+                'StoreId' => (int)($asset['StoreId'] ?? 0),
+                'Deleted' => (int)($asset['Deleted'] ?? 0),
+                'RowVersion' => $asset['RowVersion'] ?? 0,
+            ];
+
+            $result = isset($existing_asset_ids[$asset_id])
+                ? $wpdb->update(
+                    "{$wpdb->prefix}bazara_product_assets",
+                    $asset_data,
+                    ['ProductDetailStoreAssetId' => $asset_id]
+                )
+                : $wpdb->insert("{$wpdb->prefix}bazara_product_assets", $asset_data);
+
+            if ($result === false) {
+                return false;
+            }
+
+            $versions['ProductAsset'] = $this->stock_guard_latest_row_version(
+                $versions['ProductAsset'],
+                $asset['RowVersion'] ?? 0
+            );
+        }
+
+        update_option(
+            'bazara_stock_guard_versions',
+            [
+                'ProductAsset' => $versions['ProductAsset'],
+                'product' => $versions['product'],
+                'productDetail' => $versions['productDetail'],
+            ],
+            false
+        );
+
+        return true;
+    }
+
+    /**
+     * شناسه‌های موجود را با یک query دریافت می‌کند تا از query به‌ازای هر ردیف
+     * در پاسخ API جلوگیری شود.
+     */
+    private function stock_guard_existing_ids($table, $field, array $ids)
+    {
+        global $wpdb;
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+        $existing_ids = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT {$field} FROM {$wpdb->prefix}{$table} WHERE {$field} IN ({$placeholders})",
+                ...$ids
+            )
+        );
+
+        return array_fill_keys(array_map('intval', $existing_ids), true);
+    }
+
+    /**
+     * RowVersion ممکن است از محدوده integer PHP بزرگ‌تر باشد؛ مقایسه رشته‌ای
+     * از گرد شدن نسخه و دریافت دوباره داده‌های قدیمی جلوگیری می‌کند.
+     */
+    private function stock_guard_latest_row_version($current, $candidate)
+    {
+        $current = ltrim((string)$current, '0') ?: '0';
+        $candidate = ltrim((string)$candidate, '0') ?: '0';
+
+        if (strlen($candidate) > strlen($current)) {
+            return $candidate;
+        }
+
+        if (strlen($candidate) === strlen($current) && strcmp($candidate, $current) > 0) {
+            return $candidate;
+        }
+
+        return $current;
+    }
+
     public function repair_entities($token = '', $url = '', $input = [])
     {
         if (empty($token)) {
