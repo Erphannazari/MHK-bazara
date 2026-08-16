@@ -53,6 +53,7 @@ class Bz_Import_Export_For_Woo_Basic_Logwriter extends Bz_Import_Export_For_Woo_
 	*/
 	public static function write_log($post_type, $action_type, $data)
 	{
+		return;
 		/**
 		*	Checks log file created for the current day
 		*/
