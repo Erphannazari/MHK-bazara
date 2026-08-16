@@ -82,7 +82,34 @@ class BazaraApi
     
         // 2) درخواست از API
         $response = $this->http_post($this->getAll, $input, $token);
-        $decoded  = json_decode($response, true);
+
+        if (!is_string($response) || trim($response) === '') {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'API returned empty or invalid response',
+                'Error',
+                print_r($response, true)
+            );
+
+            return array(
+                'success' => false,
+                'message' => 'Empty API response'
+            );
+        }
+
+        $decoded = json_decode($response, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'JSON Decode Failed',
+                'Error',
+                json_last_error_msg() . "\nResponse:\n" . $response
+            );
+
+            return array(
+                'success' => false,
+                'message' => 'Invalid JSON response'
+            );
+        }
     
         // 3) بررسی معتبر بودن JSON
         if (!is_array($decoded)) {
@@ -3146,7 +3173,6 @@ class BazaraApi
         }
 
         $completed_date = normalize_datetime_to_gregorian($completed_date);
-        bazara_save_log(date_i18n('Y-m-j'), 'completed date', $completed_date, 'test');
 
         if (!$hpos_enable)
             $order_number = get_post_meta($order_id, '_order_number', true);
@@ -4238,12 +4264,21 @@ class BazaraApi
                 if ($index <= $min) continue;
                 if ($index > $max) break;
 
-                $pricesList = $Discounts = [];
+                $pricesList = [];
+                $Discounts = [];
+
                 for ($i = 1; $i <= 10; $i++) {
-                    if (!empty($productdetail["Price{$i}"]));
-                    $pricesList[$i]["Price{$i}"] = $productdetail["Price{$i}"];
-                    if (isset($productdetail["Discount{$i}"]) && !empty($productdetail["Discount{$i}"]));
-                    $Discounts[$i]["Discount{$i}"] = $productdetail["Discount{$i}"];
+
+                    $priceKey = "Price{$i}";
+                    $discountKey = "Discount{$i}";
+
+                    if (isset($productdetail[$priceKey])) {
+                        $pricesList[$i][$priceKey] = $productdetail[$priceKey];
+                    }
+
+                    if (isset($productdetail[$discountKey])) {
+                        $Discounts[$i][$discountKey] = $productdetail[$discountKey];
+                    }
                 }
 
                 $product_items = [

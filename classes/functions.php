@@ -1037,7 +1037,9 @@ function bazara_convert_request_to_options($hasRequest = false)
         'chkLastOrderID'    => toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_last_order_id'] ?? '')),
         'customerGroupID'   => sanitize_text_field($_REQUEST['PersonGroup'] ?? ''),
         'variation_date_condition' => sanitize_text_field($_REQUEST['variationDateCondition'] ?? ''),
-        'variationVisibilityType'  => $_REQUEST['variationVisibilityType'] ?? '',
+        'variationVisibilityType'  => isset($_REQUEST['variationVisibilityType']) && is_array($_REQUEST['variationVisibilityType'])
+                        ? $_REQUEST['variationVisibilityType']: []
+            ,
         'StoresSortOrder'   => $_REQUEST['StorePriorityOrders'] ?? [],
         'StorePriorityToggle' => $_REQUEST['bazara_anbar_priority'] ?? '',
         'dateFirstCond'     => $_REQUEST['date_first_select'] ?? '',
@@ -1439,8 +1441,20 @@ function create_product($args)
 
             // رد شدن از متغیر تو در تو (سفارشی‌سازی)
             $attr = $product->get_attributes();
-            if(is_object($attr[array_key_first($attr)]) && get_class($attr[array_key_first($attr)]) === 'stdClass'){
-                return ['success' => false, 'message' => 'کالای دارای جزئیات نمیتواند بعنوان متغییر یک محصول متغییر همگام سازی شود.'];
+
+            if (!empty($attr)) {
+                $first_key = array_key_first($attr);
+
+                if (
+                    isset($attr[$first_key]) &&
+                    is_object($attr[$first_key]) &&
+                    get_class($attr[$first_key]) === 'stdClass'
+                ) {
+                    return array(
+                        'success' => false,
+                        'message' => 'کالای دارای جزئیات نمیتواند بعنوان متغییر یک محصول متغییر همگام سازی شود.'
+                    );
+                }
             }
 
             // ویژگی دارای options خالی یا null است (سفارشی‌سازی)
@@ -2238,22 +2252,13 @@ function product_out_of_Stock($product_id)
     $out_of_stock_status = 'outofstock';
 
     // ۱. به‌روزرسانی تعداد موجودی
-    $stock_updated = update_post_meta($product_id, '_stock', 0);
-    if ($stock_updated === false) {
-        error_log("Failed to update _stock meta for product ID $product_id");
-    }
+    update_post_meta($product_id, '_stock', 0);
 
     // ۲. به‌روزرسانی وضعیت موجودی
-    $status_updated = update_post_meta($product_id, '_stock_status', wc_clean($out_of_stock_status));
-    if ($status_updated === false) {
-        error_log("Failed to update _stock_status meta for product ID $product_id");
-    }
+    update_post_meta($product_id, '_stock_status', wc_clean($out_of_stock_status));
 
     // ۳. به‌روزرسانی رابطه برچسب پست
-    $terms_updated = wp_set_post_terms($product_id, 'outofstock', 'product_visibility', true);
-    if (is_wp_error($terms_updated)) {
-        error_log("Failed to update product_visibility term for product ID $product_id: " . $terms_updated->get_error_message());
-    }
+    wp_set_post_terms($product_id, 'outofstock', 'product_visibility', true);
 
     // ۴. پاک‌سازی/بازسازی کش ویژگی‌ها
     wc_delete_product_transients($product_id);
@@ -3284,7 +3289,7 @@ function bazara_run_product_synchronize()
 
         for ($i = 0; $i < count($entities); $i++) {
             $bazara->bazara_copy_entities($entities[$i], $sync_min, $sync_max);
-            bazara_save_log(date_i18n('Y-m-j'),'در حال همگام سازی',json_encode($entities[$i]),'test');
+            // bazara_save_log(date_i18n('Y-m-j'),'در حال همگام سازی',json_encode($entities[$i]),'test');
         }
 
         bz_cleanup_duplicate_variations_from_report();
