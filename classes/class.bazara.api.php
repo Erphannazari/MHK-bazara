@@ -3257,8 +3257,7 @@ class BazaraApi
         if ($order_number > 0)
             $orderClientID = $order_number;
         $cheqid = bazara_get_last_client_id('cheque') + 1;
-        $db_item_discount = get_order_item_discount($order_id);
-        $total_discount = isset($db_item_discount->discount) ? (float) $db_item_discount->discount : 0;
+        $total_discount = 0;
         $orders = [];
 
         //HPOS
@@ -3493,13 +3492,15 @@ class BazaraApi
             // $total_row_discount = $item->get_subtotal() - $item->get_total();
             $role_base = get_post_meta($orderDetailPID, '_enable_role_based_price', false);
 
+
             $total_row_discount = 0;
 
             $unit_price = $item->get_subtotal() / $quantity;
 
-            if ($product->get_sale_price() > 0 && !$role_base && !class_exists('wholeSalePermium')) {
-                $unit_price = $product->get_regular_price();
-                $total_row_discount = ($product->get_regular_price() - $product->get_sale_price()) * $quantity;
+            $item_discount = (float) $item->get_subtotal() - (float) $item->get_total();
+
+            if ($item_discount > 0 && !$role_base && !class_exists('wholeSalePermium')) {
+                $total_row_discount = $item_discount;
                 $total_discount += $total_row_discount;
             }
 
