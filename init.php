@@ -799,9 +799,6 @@ class bazara
                 $tblname = 'bazara_visitor_products';
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` BIGINT";
-                // $tblname = 'bazara_transactions';
-                // $wp_track_table = $table_prefix . $tblname;
-                // $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` BIGINT";
                 $tblname = 'bazara_stores';
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` BIGINT";
@@ -862,9 +859,6 @@ class bazara
                 $tblname = 'bazara_visitor_products';
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` decimal(38,0)";
-                // $tblname = 'bazara_transactions';
-                // $wp_track_table = $table_prefix . $tblname;
-                // $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` decimal(38,0)";
                 $tblname = 'bazara_stores';
                 $wp_track_table = $table_prefix . $tblname;
                 $sq[] = "ALTER TABLE $wp_track_table MODIFY column `RowVersion` decimal(38,0)";
