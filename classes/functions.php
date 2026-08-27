@@ -3652,9 +3652,8 @@ function bazara_stock_guard_is_enabled()
 |--------------------------------------------------------------------------
 | کنترل موجودی واقعی پیش از نهایی‌شدن خرید
 |--------------------------------------------------------------------------
-| تغییرات موجودی محک فقط یک‌بار و به‌صورت افزایشی دریافت می‌شوند. سپس تمام
-| اقلام سبد با queryهای گروهی بررسی می‌شوند تا ضمن جلوگیری از فروش بیش‌ازحد،
-| زمان checkout با تعداد اقلام سبد رشد خطیِ query به‌ازای هر Detail نداشته باشد.
+| فقط اطلاعات محصولات موجود در سبد از Lookup دریافت می‌شود و موجودی دقیق
+| Detail انتخاب‌شده، پس از کسر سفارش‌های تبدیل‌نشده، بررسی می‌شود.
 */
 function bazara_check_stock_realtime()
 {
@@ -3678,6 +3677,25 @@ function bazara_check_stock_realtime()
     $errors = $guard->validate_cart($woocommerce->cart->get_cart());
 
     foreach ($errors as $error) {
+        if (($error['reason'] ?? '') === 'verification_failed') {
+            wc_add_notice(
+                __('امکان بررسی لحظه‌ای موجودی محک وجود ندارد. لطفاً چند لحظه دیگر دوباره تلاش کنید.', 'bazara'),
+                'error'
+            );
+            continue;
+        }
+
+        if (($error['reason'] ?? '') === 'unavailable') {
+            wc_add_notice(
+                sprintf(
+                    __('محصول «%s» در محک موجود نیست یا در حال حاضر قابل فروش نیست.', 'bazara'),
+                    $error['name']
+                ),
+                'error'
+            );
+            continue;
+        }
+
         wc_add_notice(
             sprintf(
                 __(
