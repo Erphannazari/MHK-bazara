@@ -510,7 +510,9 @@ class BazaraApi
         }
         $jObj = json_decode($result, true);
 
-        $active_sync = toggle_to_boolean(sanitize_text_field($_REQUEST['active_auto_sync']));
+        $active_sync = isset($_REQUEST['active_auto_sync'])
+            ? toggle_to_boolean(sanitize_text_field(wp_unslash($_REQUEST['active_auto_sync'])))
+            : !empty($this->plugin_options['active_auto_sync']);
 
         if ($jObj['Result'] == "True") {
             $options = [
