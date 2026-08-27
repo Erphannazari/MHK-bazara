@@ -782,7 +782,11 @@ function bazara_save_realtime_stock_guard_ajax()
 {
     check_ajax_referer('bazara_security', 'security');
 
-    if (!current_user_can('manage_woocommerce') && !current_user_can('manage_options')) {
+    if (
+        !current_user_can('shop_bazara')
+        && !current_user_can('manage_woocommerce')
+        && !current_user_can('manage_options')
+    ) {
         wp_send_json_error(['message' => 'دسترسی لازم برای تغییر این تنظیم را ندارید.'], 403);
     }
 

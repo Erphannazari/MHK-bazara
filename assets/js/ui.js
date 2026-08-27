@@ -163,9 +163,13 @@ jQuery(document).ready(function () {
                         : 'خطا در ذخیره تنظیم کنترل موجودی'
                 );
             },
-            error: function () {
+            error: function (xhr) {
                 toggle.prop('checked', !enabled);
-                showBazaraErrorMessage('خطا در ذخیره تنظیم کنترل موجودی');
+                showBazaraErrorMessage(
+                    xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message
+                        ? xhr.responseJSON.data.message
+                        : 'خطا در ذخیره تنظیم کنترل موجودی'
+                );
             },
             complete: function () {
                 toggle.prop('disabled', false);
