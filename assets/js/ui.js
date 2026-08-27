@@ -136,6 +136,43 @@ jQuery(document).ready(function () {
 
     });
 
+    jQuery('#bazara_realtime_stock_guard').change(function () {
+        var toggle = jQuery(this);
+        var enabled = toggle.is(':checked');
+
+        toggle.prop('disabled', true);
+
+        jQuery.ajax({
+            url: params.ajax_url,
+            type: 'post',
+            data: {
+                action: 'bazara_save_realtime_stock_guard',
+                security: params.ajax_nonce,
+                enabled: enabled ? 1 : 0
+            },
+            success: function (response) {
+                if (response.success) {
+                    showBazaraSuccessMessage(response.data.message);
+                    return;
+                }
+
+                toggle.prop('checked', !enabled);
+                showBazaraErrorMessage(
+                    response.data && response.data.message
+                        ? response.data.message
+                        : 'خطا در ذخیره تنظیم کنترل موجودی'
+                );
+            },
+            error: function () {
+                toggle.prop('checked', !enabled);
+                showBazaraErrorMessage('خطا در ذخیره تنظیم کنترل موجودی');
+            },
+            complete: function () {
+                toggle.prop('disabled', false);
+            }
+        });
+    });
+
     if (dig_sort_fields.length) {
         var dig_sortorder = jQuery("#dig_sortorder");
 

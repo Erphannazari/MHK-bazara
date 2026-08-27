@@ -727,6 +727,7 @@ function bazara_get_sync_percentage()
 }
 add_action('wp_ajax_bazara_check_user_access', 'bazara_check_user_access_ajax');
 add_action('wp_ajax_bazara_check_support_login', 'bazara_check_support_login_ajax');
+add_action('wp_ajax_bazara_save_realtime_stock_guard', 'bazara_save_realtime_stock_guard_ajax');
 add_action('wp_ajax_nopriv_bazara_save_settings', 'bazara_save_settings');
 add_action('wp_ajax_bazara_save_settings', 'bazara_save_settings');
 
@@ -769,6 +770,35 @@ const bazaraOptionsForSEO = [
     'chkTitle' => 'نام محصول',
     'chkDontRemoveAttributes' => 'عدم حذف ویژگی'
 ];
+
+/*
+|--------------------------------------------------------------------------
+| ذخیره مستقل کنترل لحظه‌ای موجودی
+|--------------------------------------------------------------------------
+| این گزینه عملیاتی است و بدون ورود پشتیبان ذخیره می‌شود. nonce و دسترسی
+| مدیریت ووکامرس همچنان برای جلوگیری از تغییر غیرمجاز بررسی می‌شوند.
+*/
+function bazara_save_realtime_stock_guard_ajax()
+{
+    check_ajax_referer('bazara_security', 'security');
+
+    if (!current_user_can('manage_woocommerce') && !current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'دسترسی لازم برای تغییر این تنظیم را ندارید.'], 403);
+    }
+
+    $enabled = !empty($_POST['enabled']) && absint(wp_unslash($_POST['enabled'])) === 1;
+    $settings = get_option('bazara_visitor_settings', []);
+    $settings = is_array($settings) ? $settings : [];
+    $settings['chkRealtimeStockGuard'] = $enabled;
+
+    update_option('bazara_visitor_settings', $settings);
+
+    wp_send_json_success([
+        'enabled' => $enabled,
+        'message' => 'تنظیم کنترل لحظه‌ای موجودی ذخیره شد.',
+    ]);
+}
+
 function bazara_check_support_login_ajax()
 {
     try {
