@@ -18,6 +18,11 @@ function get_post_meta($post_id, $key, $single = false)
     return $GLOBALS['bazara_stock_guard_test_meta'][$post_id][$key] ?? '';
 }
 
+function update_meta_cache($meta_type, $object_ids)
+{
+    return true;
+}
+
 function wc_get_product($product_id)
 {
     return null;

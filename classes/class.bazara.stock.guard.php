@@ -239,6 +239,24 @@ final class Bazara_Stock_Guard
     private function collect_cart_requests(array $cart_items)
     {
         $requests = [];
+        $post_ids = [];
+
+        foreach ($cart_items as $cart_item) {
+            $product_id = (int)($cart_item['product_id'] ?? 0);
+            $variation_id = (int)($cart_item['variation_id'] ?? 0);
+
+            if ($product_id > 0) {
+                $post_ids[] = $product_id;
+            }
+
+            if ($variation_id > 0) {
+                $post_ids[] = $variation_id;
+            }
+        }
+
+        if (!empty($post_ids)) {
+            update_meta_cache('post', array_values(array_unique($post_ids)));
+        }
 
         foreach ($cart_items as $cart_item) {
             $product_id = (int)($cart_item['product_id'] ?? 0);
