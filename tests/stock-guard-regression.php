@@ -261,6 +261,12 @@ $variable_errors = $variable_guard->validate_cart([
         'quantity' => 15,
         'data' => new Bazara_Stock_Guard_Test_Product('پیتزا سایز ۳۲'),
     ],
+    [
+        'product_id' => 503,
+        'variation_id' => 0,
+        'quantity' => 1,
+        'data' => new Bazara_Stock_Guard_Test_Product('محصول مستقل از محک'),
+    ],
 ]);
 
 bazara_stock_guard_assert_same(

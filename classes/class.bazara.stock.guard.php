@@ -276,6 +276,11 @@ final class Bazara_Stock_Guard
 
             $mahak_product_id = (int)get_post_meta($product_id, 'mahak_id', true);
             $mahak_detail_id = (int)get_post_meta($target_id, 'mahak_product_detail_id', true);
+
+            if ($mahak_product_id <= 0 && $mahak_detail_id <= 0) {
+                continue;
+            }
+
             $request_key = $mahak_product_id > 0 && $mahak_detail_id > 0
                 ? $mahak_product_id . ':' . $mahak_detail_id
                 : 'wc:' . $target_id;
