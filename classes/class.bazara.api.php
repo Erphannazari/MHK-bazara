@@ -14,6 +14,7 @@ class BazaraApi
     private $latest_versions;
     private $enable_versioning;
     private $base_url = "https://mahakacc.mahaksoft.com/api/v3/sync";
+    private $lookup_product_info_url = "https://mahakacc.mahaksoft.com/API/v3/Lookup/GetProductInfo";
     private $img_url = "https://mahakacc.mahaksoft.com/api/v3/Content/Images/all/";
     private $login_url = "";
     private $getAll = "";
@@ -166,6 +167,73 @@ class BazaraApi
         return [
             'success' => true,
             'message' => $decoded['Data']['Objects']
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | دریافت اطلاعات لحظه‌ای یک محصول از API Lookup
+    |--------------------------------------------------------------------------
+    | فقط محصول مورد نیاز checkout دریافت می‌شود تا کنترل موجودی باعث دریافت
+    | تغییرات تمام محصولات و فشار اضافی روی سایت و سرویس محک نشود.
+    */
+    public function lookup_product_info($product_id, $token = '')
+    {
+        $product_id = (int)$product_id;
+
+        if ($product_id <= 0) {
+            return ['success' => false, 'message' => 'Invalid product ID'];
+        }
+
+        if (empty($token)) {
+            $token_result = $this->login_token();
+
+            if (empty($token_result['success'])) {
+                return [
+                    'success' => false,
+                    'message' => $token_result['message'] ?? 'Token error',
+                ];
+            }
+
+            $token = $token_result['message'];
+        }
+
+        $response = $this->http_get(
+            $this->lookup_product_info_url,
+            ['productId' => $product_id],
+            $token
+        );
+
+        if (!is_string($response) || trim($response) === '') {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'پاسخ خالی از API دریافت اطلاعات محصول',
+                'Error',
+                (string)$product_id
+            );
+
+            return ['success' => false, 'message' => 'Empty API response'];
+        }
+
+        $decoded = json_decode($response, true);
+        $result_is_success = is_array($decoded)
+            && array_key_exists('Result', $decoded)
+            && ($decoded['Result'] === true
+                || $decoded['Result'] === 1
+                || strcasecmp((string)$decoded['Result'], 'true') === 0);
+
+        if (!$result_is_success || !isset($decoded['Data']['Objects']) || !is_array($decoded['Data']['Objects'])) {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'پاسخ نامعتبر از API دریافت اطلاعات محصول',
+                'Error',
+                json_encode($decoded)
+            );
+
+            return ['success' => false, 'message' => 'Invalid API response'];
+        }
+
+        return [
+            'success' => true,
+            'message' => $decoded['Data']['Objects'],
         ];
     }
 
@@ -553,6 +621,26 @@ class BazaraApi
             return null;
         }
         return $result = $response['body'];
+    }
+
+    private function http_get($url, array $params, $bearerToken = '')
+    {
+        $response = wp_remote_get(
+            add_query_arg($params, $url),
+            [
+                'timeout' => 10,
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . trim($bearerToken),
+                ],
+            ]
+        );
+
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+            return null;
+        }
+
+        return wp_remote_retrieve_body($response);
     }
 
     private function create_woo_tax($taxPercent = 0)
