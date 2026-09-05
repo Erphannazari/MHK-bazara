@@ -96,11 +96,48 @@ final class Bazara_Stock_Guard
     }
 
     /**
-     * کل سبد را با یک refresh افزایشی و queryهای گروهی اعتبارسنجی می‌کند.
+     * Detailهای فعال پاسخ Lookup را با درنظرگرفتن حذف و تاریخ انقضا برمی‌گرداند.
+     */
+    public static function get_active_detail_ids(array $details, array $property_descriptions)
+    {
+        $date_property_codes = [];
+
+        foreach ($property_descriptions as $property_description) {
+            if (!empty($property_description['Deleted'])) {
+                continue;
+            }
+
+            if ((int)($property_description['DataType'] ?? 0) === (int)BAZARA_PROPERTY_DATE_TYPE) {
+                $date_property_codes[] = (int)($property_description['PropertyDescriptionCode'] ?? 0);
+            }
+        }
+
+        $date_property_codes = array_values(array_filter(array_unique($date_property_codes)));
+        $detail_ids = [];
+
+        foreach ($details as $detail) {
+            $detail_id = (int)($detail['ProductDetailId'] ?? 0);
+
+            if ($detail_id <= 0 || !empty($detail['Deleted'])) {
+                continue;
+            }
+
+            if (self::is_detail_expired($detail['Properties'] ?? null, $date_property_codes)) {
+                continue;
+            }
+
+            $detail_ids[] = $detail_id;
+        }
+
+        return array_values(array_unique($detail_ids));
+    }
+
+    /**
+     * موجودی Detail انتخاب‌شده هر قلم را با پاسخ لحظه‌ای Lookup اعتبارسنجی می‌کند.
      */
     public function validate_cart(array $cart_items)
     {
-        if (empty($cart_items) || !$this->api->quick_fetch_stock_changes()) {
+        if (empty($cart_items)) {
             return [];
         }
 
@@ -110,38 +147,76 @@ final class Bazara_Stock_Guard
             return [];
         }
 
-        $products_by_sku = $this->get_products_by_sku(array_keys($cart_requests));
-
-        if (empty($products_by_sku)) {
-            return [];
+        foreach ($cart_requests as $request) {
+            if ($request['mahak_product_id'] <= 0 || $request['mahak_detail_id'] <= 0) {
+                return [['reason' => 'verification_failed']];
+            }
         }
 
-        $details_by_product = $this->get_active_details_by_product(
-            array_column($products_by_sku, 'ProductId')
-        );
-        $detail_ids = [];
+        $token_result = $this->api->login_token();
 
-        foreach ($details_by_product as $product_detail_ids) {
-            $detail_ids = array_merge($detail_ids, $product_detail_ids);
+        if (empty($token_result['success']) || empty($token_result['message'])) {
+            return [['reason' => 'verification_failed']];
         }
 
-        $detail_ids = array_values(array_unique(array_map('intval', $detail_ids)));
-        $stock_map = self::build_stock_map(
-            $this->get_assets($detail_ids),
-            $this->get_allowed_store_ids()
-        );
-        $pending_quantity_map = $this->get_pending_quantity_map($detail_ids);
-        $errors = [];
+        $lookup_cache = [];
+        $detail_ids = array_values(array_unique(array_column($cart_requests, 'mahak_detail_id')));
+        $allowed_store_ids = $this->get_allowed_store_ids();
 
-        foreach ($cart_requests as $sku => $request) {
-            if (!isset($products_by_sku[$sku])) {
+        foreach ($cart_requests as $request) {
+            $product_id = $request['mahak_product_id'];
+
+            if (isset($lookup_cache[$product_id])) {
                 continue;
             }
 
-            $product_id = (int)$products_by_sku[$sku]['ProductId'];
+            $response = $this->api->lookup_product_info($product_id, $token_result['message']);
+
+            if (empty($response['success']) || !is_array($response['message'] ?? null)) {
+                return [['reason' => 'verification_failed']];
+            }
+
+            $objects = $response['message'];
+            $product = $objects['Product'] ?? [];
+            $product_is_available = is_array($product)
+                && empty($product['Deleted'])
+                && (int)($product['ProductId'] ?? 0) === $product_id;
+            $active_detail_ids = $product_is_available
+                ? self::get_active_detail_ids(
+                    $objects['ProductDetails'] ?? [],
+                    $objects['PropertyDescriptions'] ?? []
+                )
+                : [];
+
+            $lookup_cache[$product_id] = [
+                'active_detail_ids' => $active_detail_ids,
+                'stock_map' => self::build_stock_map(
+                    $objects['ProductDetailStoreAssets'] ?? [],
+                    $allowed_store_ids
+                ),
+            ];
+        }
+
+        $pending_quantity_map = $this->get_pending_quantity_map($detail_ids);
+        $errors = [];
+
+        foreach ($cart_requests as $request) {
+            $lookup = $lookup_cache[$request['mahak_product_id']];
+            $detail_id = $request['mahak_detail_id'];
+
+            if (!in_array($detail_id, $lookup['active_detail_ids'], true)) {
+                $errors[] = [
+                    'name' => $request['name'],
+                    'available_stock' => 0.0,
+                    'requested_quantity' => $request['quantity'],
+                    'reason' => 'unavailable',
+                ];
+                continue;
+            }
+
             $available_stock = self::calculate_available_stock(
-                $details_by_product[$product_id] ?? [],
-                $stock_map,
+                [$detail_id],
+                $lookup['stock_map'],
                 $pending_quantity_map
             );
 
@@ -150,6 +225,7 @@ final class Bazara_Stock_Guard
                     'name' => $request['name'],
                     'available_stock' => $available_stock,
                     'requested_quantity' => $request['quantity'],
+                    'reason' => 'insufficient_stock',
                 ];
             }
         }
@@ -158,134 +234,85 @@ final class Bazara_Stock_Guard
     }
 
     /**
-     * اقلام تکراری یک SKU را تجمیع می‌کند تا هر محصول فقط یک‌بار بررسی شود.
+     * اقلام تکراری یک Detail را تجمیع می‌کند تا موجودی واریشن‌ها مخلوط نشود.
      */
     private function collect_cart_requests(array $cart_items)
     {
         $requests = [];
+        $post_ids = [];
+
+        foreach ($cart_items as $cart_item) {
+            $product_id = (int)($cart_item['product_id'] ?? 0);
+            $variation_id = (int)($cart_item['variation_id'] ?? 0);
+
+            if ($product_id > 0) {
+                $post_ids[] = $product_id;
+            }
+
+            if ($variation_id > 0) {
+                $post_ids[] = $variation_id;
+            }
+        }
+
+        if (!empty($post_ids)) {
+            update_meta_cache('post', array_values(array_unique($post_ids)));
+        }
 
         foreach ($cart_items as $cart_item) {
             $product_id = (int)($cart_item['product_id'] ?? 0);
             $variation_id = (int)($cart_item['variation_id'] ?? 0);
             $target_id = $variation_id > 0 ? $variation_id : $product_id;
+            $quantity = (float)($cart_item['quantity'] ?? 0);
+
+            if ($product_id <= 0 || $target_id <= 0 || $quantity <= 0) {
+                continue;
+            }
+
             $product = $cart_item['data'] ?? null;
 
-            if (!$product || !is_object($product) || !method_exists($product, 'get_sku')) {
+            if (!$product || !is_object($product) || !method_exists($product, 'get_name')) {
                 $product = wc_get_product($target_id);
             }
 
-            if (!$product) {
+            $mahak_product_id = (int)get_post_meta($product_id, 'mahak_id', true);
+            $mahak_detail_id = (int)get_post_meta($target_id, 'mahak_product_detail_id', true);
+
+            if ($mahak_product_id <= 0 && $mahak_detail_id <= 0) {
                 continue;
             }
 
-            $sku = trim((string)$product->get_sku());
+            $request_key = $mahak_product_id > 0 && $mahak_detail_id > 0
+                ? $mahak_product_id . ':' . $mahak_detail_id
+                : 'wc:' . $target_id;
 
-            if ($sku === '' && $variation_id > 0) {
-                $parent_product = wc_get_product($product_id);
-                $sku = $parent_product ? trim((string)$parent_product->get_sku()) : '';
-            }
-
-            if ($sku === '') {
-                continue;
-            }
-
-            if (!isset($requests[$sku])) {
-                $requests[$sku] = [
-                    'name' => $product->get_name(),
+            if (!isset($requests[$request_key])) {
+                $requests[$request_key] = [
+                    'name' => $product ? $product->get_name() : '#' . $target_id,
                     'quantity' => 0.0,
+                    'mahak_product_id' => $mahak_product_id,
+                    'mahak_detail_id' => $mahak_detail_id,
                 ];
             }
 
-            $requests[$sku]['quantity'] += (float)($cart_item['quantity'] ?? 0);
+            $requests[$request_key]['quantity'] += $quantity;
         }
 
         return $requests;
     }
 
     /**
-     * تمام ProductIdهای مورد نیاز سبد را در یک query پیدا می‌کند.
-     */
-    private function get_products_by_sku(array $skus)
-    {
-        $skus = array_values(array_unique(array_filter(array_map('strval', $skus))));
-
-        if (empty($skus)) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($skus), '%s'));
-        $rows = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT ProductId, ProductCode
-                FROM {$this->wpdb->prefix}bazara_products
-                WHERE ProductCode IN ({$placeholders}) AND Deleted = 0",
-                ...$skus
-            ),
-            ARRAY_A
-        );
-        $products = [];
-
-        foreach ($rows as $row) {
-            $products[(string)$row['ProductCode']] = $row;
-        }
-
-        return $products;
-    }
-
-    /**
-     * Detailهای فعال را گروهی می‌خواند و بچ‌های منقضی را کنار می‌گذارد.
-     */
-    private function get_active_details_by_product(array $product_ids)
-    {
-        $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
-
-        if (empty($product_ids)) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($product_ids), '%d'));
-        $details = $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT ProductId, ProductDetailId, Properties
-                FROM {$this->wpdb->prefix}bazara_product_details
-                WHERE ProductId IN ({$placeholders}) AND Deleted = 0",
-                ...$product_ids
-            ),
-            ARRAY_A
-        );
-        $date_property_codes = array_map(
-            'intval',
-            $this->wpdb->get_col(
-                "SELECT PropertyDescriptionCode
-                FROM {$this->wpdb->prefix}bazara_product_properties
-                WHERE DataType = " . (int)BAZARA_PROPERTY_DATE_TYPE . " AND Deleted = 0"
-            )
-        );
-        $details_by_product = [];
-
-        foreach ($details as $detail) {
-            if ($this->is_detail_expired($detail['Properties'] ?? '', $date_property_codes)) {
-                continue;
-            }
-
-            $product_id = (int)$detail['ProductId'];
-            $details_by_product[$product_id][] = (int)$detail['ProductDetailId'];
-        }
-
-        return $details_by_product;
-    }
-
-    /**
      * تاریخ‌های معتبر شمسی یا میلادی را بررسی می‌کند. مقدار نامعتبر باعث حذف
      * Detail نمی‌شود تا خطای داده، فروش محصول دارای موجودی را بی‌دلیل مسدود نکند.
      */
-    private function is_detail_expired($properties, array $date_property_codes)
+    private static function is_detail_expired($properties, array $date_property_codes)
     {
         if (empty($properties) || empty($date_property_codes)) {
             return false;
         }
 
-        $properties = json_decode($properties, true);
+        if (is_string($properties)) {
+            $properties = json_decode($properties, true);
+        }
 
         if (!is_array($properties)) {
             return false;
@@ -298,7 +325,7 @@ final class Bazara_Stock_Guard
                 continue;
             }
 
-            $expiration = $this->parse_date_timestamp($property['V'] ?? '');
+            $expiration = self::parse_date_timestamp($property['V'] ?? '');
 
             if ($expiration !== null && $expiration < strtotime('today', current_time('timestamp'))) {
                 return true;
@@ -308,7 +335,7 @@ final class Bazara_Stock_Guard
         return false;
     }
 
-    private function parse_date_timestamp($value)
+    private static function parse_date_timestamp($value)
     {
         $value = trim((string)$value);
 
@@ -326,25 +353,6 @@ final class Bazara_Stock_Guard
         }
 
         return $timestamp === false ? null : (int)$timestamp;
-    }
-
-    private function get_assets(array $detail_ids)
-    {
-        if (empty($detail_ids)) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($detail_ids), '%d'));
-
-        return $this->wpdb->get_results(
-            $this->wpdb->prepare(
-                "SELECT ProductDetailId, StoreId, Count1, Deleted
-                FROM {$this->wpdb->prefix}bazara_product_assets
-                WHERE ProductDetailId IN ({$placeholders})",
-                ...$detail_ids
-            ),
-            ARRAY_A
-        );
     }
 
     /**
