@@ -14,7 +14,7 @@ class BazaraApi
     private $latest_versions;
     private $enable_versioning;
     private $base_url = "https://mahakacc.mahaksoft.com/api/v3/sync";
-    private $lookup_product_info_url = "https://mahakacc.mahaksoft.com/API/v3/Lookup/GetProductInfo";
+    private $lookup_product_info_url = "https://mahakacc.mahaksoft.com/api/v3/Lookup/GetProductInfo";
     private $img_url = "https://mahakacc.mahaksoft.com/api/v3/Content/Images/all/";
     private $login_url = "";
     private $getAll = "";

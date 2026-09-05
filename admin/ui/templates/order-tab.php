@@ -120,8 +120,7 @@ $realtime_stock_guard_toggle = !array_key_exists('chkRealtimeStockGuard', (array
                             </label>
                             <span class="bazara-caption">
                                 پیش از نهایی‌شدن خرید، موجودی همان محصول در محک بررسی می‌شود تا
-                                از فروش بیشتر از موجودی قابل‌فروش جلوگیری شود. تغییر این گزینه
-                                بدون تأیید پشتیبان ذخیره می‌شود.
+                                از فروش بیشتر از موجودی قابل‌فروش جلوگیری شود.
                             </span>
                         </div>
                     </td>
