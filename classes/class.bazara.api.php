@@ -53,7 +53,6 @@ class BazaraApi
             'Persons' => ['entity' => 'fromPersonVersion', 'alias' => 'Persons'],
             'VisitorPersons' => ['entity' => 'fromVisitorPersonVersion', 'alias' => 'VisitorPersons'],
             'SubCategory' => ['entity' => 'fromProductCategoryVersion', 'alias' => 'SubCategory'],
-            'Transactions' => ['entity' => 'fromtransactionversion', 'alias' => 'Transactions'],
             'Orders' => ['entity' => 'fromOrderVersion', 'alias' => 'Orders'],
             'OrderDetails' => ['entity' => 'fromOrderDetailVersion', 'alias' => 'OrderDetails'],
 
@@ -2106,40 +2105,6 @@ class BazaraApi
                         ];
 
                         insert('bazara_visitor_persons', $product_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
-                    }
-                }
-                break;
-
-            case 'Transactions':
-                $Transactions = $product_result['message']['Transactions'];
-                if (!empty($Transactions)) {
-                    usort($Transactions, function ($item1, $item2) {
-                        if ($item1['RowVersion'] == $item2['RowVersion'])
-                            return 0;
-                        return $item1['RowVersion'] < $item2['RowVersion'] ? -1 : 1;
-                    });
-                    foreach ($Transactions as $Transaction) {
-
-                        $product_items = [
-                            'TransactionId' => $Transaction['TransactionId'],
-                            'Row' => ($Transaction['Row']),
-                            'PersonId' => ($Transaction['PersonId']),
-                            'Type' => ($Transaction['Type']),
-                            'DebtAmount' => $Transaction['DebtAmount'],
-                            'CreditAmount' => $Transaction['CreditAmount'],
-                            'Balance' => $Transaction['Balance'],
-                            'Status' => $Transaction['Status'],
-                            'Description' => $Transaction['Description'],
-                            'CreateDate' => $Transaction['CreateDate'],
-                            'UpdateDate' => $Transaction['UpdateDate'],
-                            'Deleted' => ($Transaction['Deleted'] == 'true' ? 1 : 0),
-                            'RowVersion' => $Transaction['RowVersion'],
-                            'Date' => $Transaction['Date'],
-
-                        ];
-
-                        insert('bazara_transactions', $product_items, 'TransactionId', $Transaction['TransactionId']);
-                        bazara_update_latest_versions('transactions', $Transaction['RowVersion']);
                     }
                 }
                 break;
