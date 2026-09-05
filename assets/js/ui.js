@@ -1,3 +1,5 @@
+var bazaraSyncSupportApproved = false;
+
 jQuery(document).ready(function () {
     init();
     // setInterval(function() {
@@ -177,6 +179,34 @@ jQuery(document).ready(function () {
         // jQuery('input:radio').trigger('change');
 
     });
+
+    jQuery('#bazara_entity_sync_toggle').change(function () {
+        if (jQuery(this).is(':checked') && jQuery('#bazara_product_batch_sync_toggle').is(':checked')) {
+            jQuery(this).prop('checked', false);
+            showBazaraErrorMessage('فقط یکی از ماژول‌های دریافت اطلاعات یا سینک محصولات می‌تواند فعال باشد.');
+        }
+
+        jQuery('#bazara_options_sync_min, #bazara_options_sync_max')
+            .prop('disabled', !jQuery(this).is(':checked'));
+    });
+
+    jQuery('#bazara_product_batch_sync_toggle').change(function () {
+        if (!jQuery(this).is(':checked')) {
+            jQuery('#bazara_options_product_sync_min, #bazara_options_product_sync_max').prop('disabled', true);
+            return;
+        }
+
+        if (jQuery('#bazara_entity_sync_toggle').is(':checked')) {
+            jQuery(this).prop('checked', false);
+            showBazaraErrorMessage('برای فعال‌کردن سینک محصولات، ابتدا ماژول دریافت اطلاعات را خاموش کنید.');
+        } else if (bazaraEntitySourceSettingsChanged() || jQuery(this).data('entities-completed') != 1) {
+            jQuery(this).prop('checked', false);
+            showBazaraErrorMessage('ابتدا باید دریافت تمام Entityها با موفقیت تکمیل شود.');
+        }
+
+        jQuery('#bazara_options_product_sync_min, #bazara_options_product_sync_max')
+            .prop('disabled', !jQuery(this).is(':checked'));
+    });
     jQuery("#bazara_sale_price_toggle").change(function () {
         var radioPercent = jQuery("#radioPercentDiscount").is(":checked");
         var radioPrice = jQuery("#radioPriceDiscount").is(":checked");
@@ -193,6 +223,107 @@ jQuery(document).ready(function () {
 function draggable_body(){
     
 }
+
+function bazaraBooleanValue(value, defaultValue) {
+    if (typeof value === 'undefined' || value === null) {
+        return defaultValue;
+    }
+
+    return value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
+}
+
+function bazaraCurrentSyncModuleSettings() {
+    return {
+        entity_sync_enabled: jQuery('#bazara_entity_sync_toggle').is(':checked'),
+        sync_min: parseInt(jQuery('#bazara_options_sync_min').val(), 10),
+        sync_max: parseInt(jQuery('#bazara_options_sync_max').val(), 10),
+        product_sync_enabled: jQuery('#bazara_product_batch_sync_toggle').is(':checked'),
+        product_sync_min: parseInt(jQuery('#bazara_options_product_sync_min').val(), 10),
+        product_sync_max: parseInt(jQuery('#bazara_options_product_sync_max').val(), 10)
+    };
+}
+
+function bazaraSavedSyncModuleSettings() {
+    var saved = params.visitor_setting || {};
+
+    return {
+        entity_sync_enabled: bazaraBooleanValue(saved.entity_sync_enabled, true),
+        sync_min: parseInt(typeof saved.sync_min === 'undefined' ? 0 : saved.sync_min, 10),
+        sync_max: parseInt(typeof saved.sync_max === 'undefined' ? 100000 : saved.sync_max, 10),
+        product_sync_enabled: bazaraBooleanValue(saved.product_sync_enabled, false),
+        product_sync_min: parseInt(typeof saved.product_sync_min === 'undefined' ? 0 : saved.product_sync_min, 10),
+        product_sync_max: parseInt(typeof saved.product_sync_max === 'undefined' ? 10000 : saved.product_sync_max, 10)
+    };
+}
+
+function bazaraEntitySourceSettingsChanged() {
+    var current = bazaraCurrentSyncModuleSettings();
+    var saved = bazaraSavedSyncModuleSettings();
+
+    return current.sync_min !== saved.sync_min
+        || current.sync_max !== saved.sync_max
+        || (!saved.entity_sync_enabled && current.entity_sync_enabled);
+}
+
+function bazaraSyncModuleSettingsChanged() {
+    var current = bazaraCurrentSyncModuleSettings();
+    var saved = bazaraSavedSyncModuleSettings();
+
+    return Object.keys(current).some(function (key) {
+        return current[key] !== saved[key];
+    });
+}
+
+function bazaraValidateSyncModuleSettings() {
+    var settings = bazaraCurrentSyncModuleSettings();
+
+    if (settings.entity_sync_enabled && settings.product_sync_enabled) {
+        return 'فقط یکی از ماژول‌های دریافت اطلاعات یا سینک محصولات می‌تواند فعال باشد.';
+    }
+
+    if (isNaN(settings.sync_min) || isNaN(settings.sync_max) || settings.sync_min < 0 || settings.sync_max <= settings.sync_min) {
+        return 'بازه دریافت اطلاعات معتبر نیست.';
+    }
+
+    if (
+        isNaN(settings.product_sync_min)
+        || isNaN(settings.product_sync_max)
+        || settings.product_sync_min < 0
+        || settings.product_sync_max < 1
+        || settings.product_sync_max > 10000
+    ) {
+        return 'بازه سینک محصولات معتبر نیست؛ تعداد هر مرحله باید بین ۱ تا ۱۰۰۰۰ باشد.';
+    }
+
+    if (
+        settings.product_sync_enabled
+        && (
+            bazaraEntitySourceSettingsChanged()
+            || jQuery('#bazara_product_batch_sync_toggle').data('entities-completed') != 1
+        )
+    ) {
+        return 'ابتدا باید دریافت تمام Entityها با موفقیت تکمیل شود.';
+    }
+
+    return '';
+}
+
+function bazaraUpdateSyncModuleSnapshot() {
+    var entitySettingsChanged = bazaraEntitySourceSettingsChanged();
+    var current = bazaraCurrentSyncModuleSettings();
+
+    params.visitor_setting = params.visitor_setting || {};
+    Object.keys(current).forEach(function (key) {
+        params.visitor_setting[key] = current[key];
+    });
+
+    if (entitySettingsChanged) {
+        params.visitor_setting.entity_sync_completed = false;
+        jQuery('#bazara_product_batch_sync_toggle').data('entities-completed', 0);
+        jQuery('#bazara_entity_sync_status').data('completed', 0).text('وضعیت دریافت: تکمیل‌نشده');
+    }
+}
+
 function init(){
 
     var objectChecked = jQuery("#bazara_sale_price_toggle").is(":checked");
@@ -203,13 +334,31 @@ function init(){
         jQuery("#radioPercentDiscount").trigger('change');
     }
 
-    jQuery("#bazara_save_button,#btn_save_setting,.bazara_save_button").click(function () {
+    jQuery('#bazara_setting_update #bazara-library-sync-button, #bazara_setting_update #btn_save_setting')
+        .off('click.bazaraSyncOptions')
+        .on('click.bazaraSyncOptions', function () {
         jQuery(this).removeClass('success').addClass('loading');
 
-        
         jQuery('#bazara_options_refresh_interval').css('border-color','#8c8f94');
 
         var obj = jQuery(this);
+        var validationMessage = bazaraValidateSyncModuleSettings();
+
+        if (validationMessage) {
+            showBazaraErrorMessage(validationMessage);
+            obj.removeClass('loading').addClass('success');
+            return false;
+        }
+
+        if (bazaraSyncModuleSettingsChanged() && !bazaraSyncSupportApproved) {
+            obj.removeClass('loading').addClass('success');
+            jQuery('#modalCallbackForm').val('syncOptionsForm');
+            jQuery('#bazaraModalSupportLogin').fadeIn();
+            return false;
+        }
+
+        bazaraSyncSupportApproved = false;
+
         if (jQuery('#bazara_intver_toggle').is(":checked") && (jQuery('#bazara_options_refresh_interval').val() == "" || jQuery('#bazara_options_refresh_interval').val() == "0"))
         {
             showBazaraErrorMessage("زمان همگام سازی خودکار را وارد نمایید");
@@ -227,18 +376,26 @@ function init(){
                     password:jQuery('#bazara_options_password').val(),
                     refresh_interval:jQuery('#bazara_options_refresh_interval').val(),
                     active_auto_sync:jQuery('#bazara_intver_toggle').is(":checked"),
+                    entity_sync_enabled:jQuery('#bazara_entity_sync_toggle').is(":checked"),
                     sync_min:jQuery('#bazara_options_sync_min').val(),
                     sync_max:jQuery('#bazara_options_sync_max').val(),
+                    product_sync_enabled:jQuery('#bazara_product_batch_sync_toggle').is(":checked"),
+                    product_sync_min:jQuery('#bazara_options_product_sync_min').val(),
+                    product_sync_max:jQuery('#bazara_options_product_sync_max').val(),
     
                 },
                 success : function( response ) {
-                    // alert(response);
                     if (response.status === 1)
                     {
                         obj.removeClass('loading').addClass('success');
+                        bazaraUpdateSyncModuleSnapshot();
                         showBazaraSuccessMessage("تنظیمات ذخیره شد");
                         fill_login_box(response);
                     }else if (response.status === 2){
+                        bazaraUpdateSyncModuleSnapshot();
+                        params.visitor_setting.entity_sync_completed = false;
+                        jQuery('#bazara_product_batch_sync_toggle').data('entities-completed', 0);
+                        jQuery('#bazara_entity_sync_status').data('completed', 0).text('وضعیت دریافت: تکمیل‌نشده');
                         if(!confirm(response.result))
                         fill_login_box(response);
                         else
@@ -251,30 +408,34 @@ function init(){
                             },
                             success : function( response ) {
                                 obj.removeClass('loading').addClass('success');
+                                params.visitor_setting.entity_sync_completed = false;
+                                jQuery('#bazara_product_batch_sync_toggle').data('entities-completed', 0);
+                                jQuery('#bazara_entity_sync_status').data('completed', 0).text('وضعیت دریافت: تکمیل‌نشده');
                                 fill_login_box(response);
                                 showBazaraSuccessMessage("تنظیمات ذخیره شد");
                             }
                         }).fail(function(e){
-                            console.log(e);
+                            obj.removeClass('loading').addClass('success');
+                            showBazaraErrorMessage('خطا در تغییر اطلاعات اتصال');
                         });
                     }else {
                         obj.removeClass('loading').addClass('success');
-                        showBazaraErrorMessage(response.result);
-    
-    
+                        showBazaraErrorMessage(response.result || 'خطا در ذخیره تنظیمات');
                     }
     
                 }
-            }).fail(function(){
+            }).fail(function(jqXHR){
                 obj.removeClass('loading').addClass('success');
-    
                 calling = false;
                 jQuery(".loader").hide();
+                var detail = (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.result) ? jqXHR.responseJSON.result : ((jqXHR && jqXHR.responseText) ? jqXHR.responseText.substring(0, 200) : '');
+                showBazaraErrorMessage(detail || 'خطا در ذخیره تنظیمات');
+                console.log('bazara_save_visitor_setting fail', jqXHR);
             });
         }
         
 
-            return false;
+        return false;
     });
 
     var tab = getUrlParameter("tab");
@@ -328,14 +489,22 @@ function syncSubmitLogin(){
     let res = jQuery.ajax({
         url: params.ajax_url,
         type: 'post',
-        data: "syncPasswordInput="+syncPasswordInput + "&security=" + params.ajax_nonce + "&action=bazara_check_support_login",
+        data: "syncPasswordInput=" + encodeURIComponent(syncPasswordInput)
+            + "&callbackForm=" + encodeURIComponent(modalCallbackForm)
+            + "&security=" + params.ajax_nonce
+            + "&action=bazara_check_support_login",
         success: function (response) {
-            if (response.access){
+            if (bazaraBooleanValue(response.access, false)) {
                 if (modalCallbackForm == 'syncForm') {
                     save_form_setting()
                 }
                 if (modalCallbackForm == 'loginForm') {
                     change_visitor_login_form()
+                }
+                if (modalCallbackForm == 'syncOptionsForm') {
+                    bazaraSyncSupportApproved = true;
+                    jQuery('#syncPasswordInput').val('');
+                    jQuery('#bazara-library-sync-button').trigger('click');
                 }
             }
             else{
@@ -343,9 +512,11 @@ function syncSubmitLogin(){
                 jQuery('#bazaraModalSupportLogin').fadeIn();
             }
         }
-    }).fail(function (e) {
-        showBazaraErrorMessage('خطا در ورود پشتیبان');
-        console.log('error');
+    }).fail(function (jqXHR) {
+        var detail = (jqXHR && jqXHR.responseText) ? jqXHR.responseText.substring(0, 200) : '';
+        var msg = 'خطا در ورود پشتیبان' + (detail ? ': ' + detail : '');
+        showBazaraErrorMessage(msg);
+        console.log('bazara_check_support_login fail', jqXHR);
     });
 }
 

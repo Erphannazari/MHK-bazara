@@ -16,8 +16,13 @@ function bazara_options_default()
         'packageNumber' => '',
         'banks' => '',
         'refresh_interval' => 5,
+        'entity_sync_enabled' => true,
         'sync_min' => 0,
         'sync_max' => 100000,
+        'product_sync_enabled' => false,
+        'product_sync_min' => 0,
+        'product_sync_max' => 10000,
+        'entity_sync_completed' => false,
         'publishStatus' => 'publish',
         'databaseVersion' => 0
     ];
@@ -536,6 +541,10 @@ function change_visitor()
 
         $wpdb->query("DELETE FROM $table");
     }
+
+    $options = bazara_get_options();
+    $options['entity_sync_completed'] = false;
+    update_option('bazara_options', $options);
 }
 function get_product_assets($detail, $StoreID = "")
 {
@@ -773,7 +782,7 @@ const bazaraOptionsForSEO = [
 function bazara_check_support_login_ajax()
 {
     try {
-        $syncPasswordInput = $_REQUEST['syncPasswordInput'];
+        $syncPasswordInput = sanitize_text_field($_REQUEST['syncPasswordInput'] ?? '');
         $url = "https://utils.mahaksoft.com/bazara/assistant_verification";
         $data = [
             'password' => $syncPasswordInput
@@ -783,15 +792,37 @@ function bazara_check_support_login_ajax()
             [
                 'method' => 'POST',
                 'body' => $data,
-                'timeout' => 120
+                'timeout' => 15
             ]
         );
-        $res = $response['body'] ? json_decode($response['body']) : false;
 
-        $result = [
-            'access' => $res ? $res->status : false,
-            'message' => $res ? $res->message : "خطا در اتصال به وب سرویس"
-        ];
+        if (is_wp_error($response)) {
+            $result = [
+                'access' => false,
+                'message' => 'خطا در اتصال به سرویس پشتیبان: ' . $response->get_error_message(),
+            ];
+        } else {
+            $code = (int) wp_remote_retrieve_response_code($response);
+            $body = wp_remote_retrieve_body($response);
+            $res = $body ? json_decode($body) : null;
+
+            if ($code < 200 || $code >= 300) {
+                $result = [
+                    'access' => false,
+                    'message' => 'سرویس پشتیبان در دسترس نیست (کد ' . $code . '). لطفاً دوباره تلاش کنید.',
+                ];
+            } elseif (!$res) {
+                $result = [
+                    'access' => false,
+                    'message' => 'پاسخ نامعتبر از سرویس پشتیبان دریافت شد.',
+                ];
+            } else {
+                $result = [
+                    'access' => !empty($res->status),
+                    'message' => $res->message ?? ($res->status ? 'تأیید شد.' : 'رمز پشتیبان نامعتبر است.'),
+                ];
+            }
+        }
     } catch (Exception $e) {
         $result = [
             'access' => false,
@@ -799,6 +830,16 @@ function bazara_check_support_login_ajax()
             'messageDetail' => $e->getMessage()
         ];
     }
+
+    $callback_form = sanitize_text_field($_REQUEST['callbackForm'] ?? '');
+    if (toggle_to_boolean($result['access']) && $callback_form === 'syncOptionsForm') {
+        set_transient(
+            'bazara_sync_options_support_' . get_current_user_id(),
+            1,
+            2 * MINUTE_IN_SECONDS
+        );
+    }
+
     wp_send_json($result);
 }
 
@@ -1090,19 +1131,85 @@ function bazara_save_visitor_setting()
     check_ajax_referer('bazara_security', 'security');
 
     $bazara = new BazaraApi(true);
-    $options = get_option('bazara_options');
+    $saved_options = bazara_get_options();
 
     $active_sync = toggle_to_boolean(sanitize_text_field($_REQUEST['active_auto_sync']));
-    $options = [
-        'username' => (sanitize_text_field($_REQUEST['username'])),
-        'password' => (sanitize_text_field($_REQUEST['password'])),
+    $entity_sync_enabled = toggle_to_boolean(
+        sanitize_text_field($_REQUEST['entity_sync_enabled'] ?? $saved_options['entity_sync_enabled'])
+    );
+    $product_sync_enabled = toggle_to_boolean(
+        sanitize_text_field($_REQUEST['product_sync_enabled'] ?? $saved_options['product_sync_enabled'])
+    );
+    $sync_min = isset($_REQUEST['sync_min']) ? intval($_REQUEST['sync_min']) : 0;
+    $sync_max = isset($_REQUEST['sync_max']) ? intval($_REQUEST['sync_max']) : 100000;
+    $product_sync_min = isset($_REQUEST['product_sync_min']) ? intval($_REQUEST['product_sync_min']) : 0;
+    $product_sync_max = isset($_REQUEST['product_sync_max']) ? intval($_REQUEST['product_sync_max']) : 10000;
+
+    if ($entity_sync_enabled && $product_sync_enabled) {
+        wp_send_json([
+            'status' => false,
+            'result' => 'فقط یکی از ماژول‌های دریافت اطلاعات یا سینک محصولات می‌تواند فعال باشد.',
+        ]);
+    }
+
+    if ($sync_min < 0 || $sync_max <= $sync_min) {
+        wp_send_json([
+            'status' => false,
+            'result' => 'بازه دریافت اطلاعات معتبر نیست.',
+        ]);
+    }
+
+    if ($product_sync_min < 0 || $product_sync_max < 1 || $product_sync_max > 10000) {
+        wp_send_json([
+            'status' => false,
+            'result' => 'بازه سینک محصولات معتبر نیست؛ تعداد هر مرحله باید بین ۱ تا ۱۰۰۰۰ باشد.',
+        ]);
+    }
+
+    $entity_settings_changed = intval($saved_options['sync_min']) !== $sync_min
+        || intval($saved_options['sync_max']) !== $sync_max
+        || (empty($saved_options['entity_sync_enabled']) && $entity_sync_enabled);
+    $entity_sync_completed = !$entity_settings_changed && !empty($saved_options['entity_sync_completed']);
+    $sync_module_settings_changed = toggle_to_boolean($saved_options['entity_sync_enabled']) !== $entity_sync_enabled
+        || intval($saved_options['sync_min']) !== $sync_min
+        || intval($saved_options['sync_max']) !== $sync_max
+        || toggle_to_boolean($saved_options['product_sync_enabled']) !== $product_sync_enabled
+        || intval($saved_options['product_sync_min']) !== $product_sync_min
+        || intval($saved_options['product_sync_max']) !== $product_sync_max;
+
+    if ($product_sync_enabled && !$entity_sync_completed) {
+        wp_send_json([
+            'status' => false,
+            'result' => 'ابتدا باید دریافت تمام Entityها با موفقیت تکمیل شود.',
+        ]);
+    }
+
+    if ($sync_module_settings_changed) {
+        $support_access_key = 'bazara_sync_options_support_' . get_current_user_id();
+
+        if (!get_transient($support_access_key)) {
+            wp_send_json([
+                'status' => false,
+                'result' => 'برای ذخیره تغییرات این ماژول، رمز پشتیبان را وارد کنید.',
+            ]);
+        }
+
+        delete_transient($support_access_key);
+    }
+
+    $options = array_merge($saved_options, [
+        'username' => sanitize_text_field($_REQUEST['username'] ?? $saved_options['username']),
+        'password' => sanitize_text_field($_REQUEST['password'] ?? $saved_options['password']),
         'refresh_interval' => sanitize_text_field($_REQUEST['refresh_interval']),
         'active_auto_sync' => $active_sync,
-        'publishStatus' => isset($_REQUEST['publishStatus']) ? sanitize_text_field($_REQUEST['publishStatus']) : '',
-        'databaseVersion' => $options['databaseVersion'],
-        'sync_min' => isset($_REQUEST['sync_min']) ? absint($_REQUEST['sync_min']) : 0,
-        'sync_max' => isset($_REQUEST['sync_max']) ? absint($_REQUEST['sync_max']) : 100000,
-    ];
+        'entity_sync_enabled' => $entity_sync_enabled,
+        'sync_min' => $sync_min,
+        'sync_max' => $sync_max,
+        'product_sync_enabled' => $product_sync_enabled,
+        'product_sync_min' => $product_sync_min,
+        'product_sync_max' => $product_sync_max,
+        'entity_sync_completed' => $entity_sync_completed,
+    ]);
     if (!$active_sync)
         $options['refresh_interval'] = 0;
 
@@ -1125,6 +1232,8 @@ function bazara_save_visitor_setting()
     $savedVisitor = $validToken['VisitorID'];
 
     if (($savedVisitor != $lastVisitor)) {
+        $options['entity_sync_completed'] = false;
+        update_option('bazara_options', $options);
         $message = "در این سایت قبلا با اطلاعات دیگری همگام سازی انجام شده،در صورت تایید کلیه کالاهای محکی قبلی حذف و یا آپدیت خواهند شد.مطمئن هستید؟";
         $bazara->set_visitor_options(null, $savedVisitor);
         wp_send_json(['status' => 2, 'result' => $message, 'data' => $validToken['object']]);
@@ -3260,9 +3369,23 @@ function bazara_run_product_synchronize()
     $bazara_options = bazara_get_options();
     $sync_min = isset($bazara_options['sync_min']) ? intval($bazara_options['sync_min']) : 0;
     $sync_max = isset($bazara_options['sync_max']) ? intval($bazara_options['sync_max']) : 100000;
+    $entity_sync_enabled = !empty($bazara_options['entity_sync_enabled']);
+    $product_sync_enabled = !empty($bazara_options['product_sync_enabled']);
+    $product_sync_min = isset($bazara_options['product_sync_min']) ? intval($bazara_options['product_sync_min']) : 0;
+    $product_sync_max = isset($bazara_options['product_sync_max']) ? intval($bazara_options['product_sync_max']) : 10000;
 
     if (isset($bazara_options['CreditDay']) && $bazara_options['CreditDay'] < 0) {
         bazara_save_log(date_i18n('Y-m-j'), 'اتمام اعتبار', 'expired', 'error');
+        return false;
+    }
+
+    if ($entity_sync_enabled && $product_sync_enabled) {
+        bazara_save_log(
+            date_i18n('Y-m-j'),
+            'تنظیمات نامعتبر همگام‌سازی',
+            'دو ماژول دریافت اطلاعات و سینک محصولات هم‌زمان فعال هستند.',
+            'error'
+        );
         return false;
     }
 
@@ -3275,7 +3398,7 @@ function bazara_run_product_synchronize()
     $syncPersons = !empty($visitorSetting['chkCustomersMahak']) && $visitorSetting['chkCustomersMahak'];
     $syncCategory = (!empty($visitorSetting['chkCategory']) && $visitorSetting['chkCategory']) ? ($visitorSetting['chkCategory'] == "cat" ? BAZARA_PRODUCT_CATEGORY : BAZARA_PRODUCT_SUB_CATEGORY) : false;
 
-    if ($syncProduct) {
+    if ($syncProduct && $entity_sync_enabled) {
         $entities = [
             'Settings',
             'ProductSync',
@@ -3295,12 +3418,41 @@ function bazara_run_product_synchronize()
             'Regions'
         ];
 
+        $entity_sync_completed = true;
+        $latest_options = bazara_get_options();
+        $latest_options['entity_sync_completed'] = false;
+        update_option('bazara_options', $latest_options);
+
         for ($i = 0; $i < count($entities); $i++) {
-            $bazara->bazara_copy_entities($entities[$i], $sync_min, $sync_max);
-            // bazara_save_log(date_i18n('Y-m-j'),'در حال همگام سازی',json_encode($entities[$i]),'test');
+            $result = $bazara->bazara_copy_entities($entities[$i], $sync_min, $sync_max);
+
+            if (!is_array($result) || empty($result['success'])) {
+                $entity_sync_completed = false;
+                bazara_save_log(
+                    date_i18n('Y-m-j'),
+                    'خطا در دریافت Entity ' . $entities[$i],
+                    is_array($result) ? ($result['message'] ?? $result['error'] ?? '') : '',
+                    'error'
+                );
+                break;
+            }
         }
 
-        //========================================================================================================
+        $latest_options = bazara_get_options();
+        $latest_options['entity_sync_completed'] = $entity_sync_completed;
+        update_option('bazara_options', $latest_options);
+    }
+
+    if ($syncProduct && $product_sync_enabled) {
+        if (empty($bazara_options['entity_sync_completed'])) {
+            bazara_save_log(
+                date_i18n('Y-m-j'),
+                'توقف سینک محصولات',
+                'دریافت تمام Entityها هنوز تکمیل نشده است.',
+                'error'
+            );
+            return false;
+        }
 
         bz_cleanup_duplicate_variations_from_report();
 
@@ -3308,15 +3460,13 @@ function bazara_run_product_synchronize()
             if ($syncCategory)
                 $bazara->start_sync_category(null, $syncCategory);
 
-            $message = $bazara->start_sync_new_product($sync_min, $sync_max > 10000 ? 10000 : $sync_max, true)['message'];
+            $message = $bazara->start_sync_new_product($product_sync_min, $product_sync_max, true)['message'];
             clear_junk_data();
         }
 
         if ($syncPicture) {
             $bazara->sync_pictures()['message'];
         }
-
-        //========================================================================================================
     }
 
     // سینک اشخاص به cron جداگانه خود منتقل شد (bazara_run_persons_sync)
@@ -3942,7 +4092,9 @@ function bazara_get_last_client_id($target = 'receipt')
 
 function bazara_get_options()
 {
-    return get_option('bazara_options', bazara_options_default());
+    $options = get_option('bazara_options', []);
+
+    return array_merge(bazara_options_default(), is_array($options) ? $options : []);
 }
 
 function get_latest_versions()
