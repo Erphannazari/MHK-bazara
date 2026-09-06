@@ -3808,57 +3808,73 @@ function bazara_stock_guard_is_enabled()
 */
 function bazara_check_stock_realtime()
 {
+    $errors = bazara_get_realtime_stock_guard_errors();
+
+    foreach (bazara_get_realtime_stock_guard_messages($errors) as $message) {
+        wc_add_notice($message, 'error');
+    }
+}
+
+/**
+ * کنترل موجودی لحظه‌ای را برای مسیرهای مختلف checkout اجرا می‌کند.
+ *
+ * این کنترل مستقل از Cron و سینک دوره‌ای است و در لحظه پرداخت، موجودی
+ * همان Detail را مستقیماً از Lookup محک اعتبارسنجی می‌کند.
+ */
+function bazara_get_realtime_stock_guard_errors()
+{
     if (!bazara_stock_guard_is_enabled()) {
-        return;
+        return [];
     }
 
     if (!class_exists('BazaraApi') || !class_exists('Bazara_Stock_Guard')) {
-        return;
+        return [];
     }
 
     $woocommerce = WC();
 
     if (!$woocommerce || !$woocommerce->cart) {
-        return;
+        return [];
     }
 
     global $wpdb;
 
     $guard = new Bazara_Stock_Guard(new BazaraApi(true), $wpdb);
-    $errors = $guard->validate_cart($woocommerce->cart->get_cart());
+    return $guard->validate_cart($woocommerce->cart->get_cart());
+}
+
+/**
+ * خطاهای کنترل موجودی را به پیام‌های قابل‌نمایش ووکامرس تبدیل می‌کند.
+ */
+function bazara_get_realtime_stock_guard_messages(array $errors)
+{
+    $messages = [];
 
     foreach ($errors as $error) {
         if (($error['reason'] ?? '') === 'verification_failed') {
-            wc_add_notice(
-                __('امکان بررسی لحظه‌ای موجودی محک وجود ندارد. لطفاً چند لحظه دیگر دوباره تلاش کنید.', 'bazara'),
-                'error'
-            );
+            $messages[] = __('امکان بررسی لحظه‌ای موجودی محک وجود ندارد. لطفاً چند لحظه دیگر دوباره تلاش کنید.', 'bazara');
             continue;
         }
 
         if (($error['reason'] ?? '') === 'unavailable') {
-            wc_add_notice(
-                sprintf(
-                    __('محصول «%s» در محک موجود نیست یا در حال حاضر قابل فروش نیست.', 'bazara'),
-                    $error['name']
-                ),
-                'error'
+            $messages[] = sprintf(
+                __('محصول «%s» در محک موجود نیست یا در حال حاضر قابل فروش نیست.', 'bazara'),
+                $error['name'] ?? ''
             );
             continue;
         }
 
-        wc_add_notice(
-            sprintf(
-                __(
-                    'متأسفانه موجودی محصول «%1$s» برای تکمیل خرید کافی نیست. موجودی فعلی: %2$s',
-                    'bazara'
-                ),
-                $error['name'],
-                wc_format_decimal($error['available_stock'], 2)
+        $messages[] = sprintf(
+            __(
+                'متأسفانه موجودی محصول «%1$s» برای تکمیل خرید کافی نیست. موجودی فعلی: %2$s',
+                'bazara'
             ),
-            'error'
+            $error['name'] ?? '',
+            wc_format_decimal($error['available_stock'] ?? 0, 2)
         );
     }
+
+    return array_values(array_unique($messages));
 }
 
 /*
