@@ -3780,9 +3780,7 @@ function get_wp_roles()
     return $wp_roles->get_names();
 }
 
-if (bazara_stock_guard_is_enabled()) {
-    add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
-}
+add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
 
 /**
  * برای نصب‌های قبلی که هنوز کلید تنظیمات را ندارند، رفتار محافظه‌کارانه و
@@ -3828,13 +3826,13 @@ function bazara_get_realtime_stock_guard_errors()
     }
 
     if (!class_exists('BazaraApi') || !class_exists('Bazara_Stock_Guard')) {
-        return [];
+        return [['reason' => 'verification_failed']];
     }
 
     $woocommerce = WC();
 
     if (!$woocommerce || !$woocommerce->cart) {
-        return [];
+        return [['reason' => 'verification_failed']];
     }
 
     global $wpdb;
