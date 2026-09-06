@@ -3781,6 +3781,7 @@ function get_wp_roles()
 }
 
 add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
+add_action('woocommerce_store_api_checkout_order_processed', 'bazara_check_stock_realtime_store_api');
 
 /**
  * برای نصب‌های قبلی که هنوز کلید تنظیمات را ندارند، رفتار محافظه‌کارانه و
@@ -3819,7 +3820,7 @@ function bazara_check_stock_realtime()
  * این کنترل مستقل از Cron و سینک دوره‌ای است و در لحظه پرداخت، موجودی
  * همان Detail را مستقیماً از Lookup محک اعتبارسنجی می‌کند.
  */
-function bazara_get_realtime_stock_guard_errors()
+function bazara_get_realtime_stock_guard_errors($order = null)
 {
     if (!bazara_stock_guard_is_enabled()) {
         return [];
@@ -3829,16 +3830,56 @@ function bazara_get_realtime_stock_guard_errors()
         return [['reason' => 'verification_failed']];
     }
 
-    $woocommerce = WC();
+    $woocommerce = function_exists('WC') ? WC() : null;
+    $cart_items = ($woocommerce && $woocommerce->cart) ? $woocommerce->cart->get_cart() : [];
 
-    if (!$woocommerce || !$woocommerce->cart) {
-        return [['reason' => 'verification_failed']];
+    if (empty($cart_items)) {
+        $cart_items = bazara_get_stock_guard_items_from_order($order);
+    }
+
+    if (empty($cart_items)) {
+        if (!$woocommerce || !$woocommerce->cart) {
+            return [['reason' => 'verification_failed']];
+        }
+
+        return [];
     }
 
     global $wpdb;
 
     $guard = new Bazara_Stock_Guard(new BazaraApi(true), $wpdb);
-    return $guard->validate_cart($woocommerce->cart->get_cart());
+    return $guard->validate_cart($cart_items);
+}
+
+/**
+ * آیتم‌های سفارش Store API را به شکل اقلام سبد تبدیل می‌کند تا همان هسته
+ * اعتبارسنجی برای هر دو مسیر checkout اجرا شود. سبد اولویت اول است و
+ * سفارش فقط fallback است تا اختلاف تایمینگ باعث عبور پرداخت نشود.
+ */
+function bazara_get_stock_guard_items_from_order($order)
+{
+    if (!is_object($order) || !method_exists($order, 'get_items')) {
+        return [];
+    }
+
+    $items = [];
+
+    foreach ($order->get_items() as $order_item) {
+        if (!is_object($order_item) || !method_exists($order_item, 'get_product_id')) {
+            continue;
+        }
+
+        $product = method_exists($order_item, 'get_product') ? $order_item->get_product() : null;
+
+        $items[] = [
+            'product_id' => (int)$order_item->get_product_id(),
+            'variation_id' => (int)$order_item->get_variation_id(),
+            'quantity' => (float)$order_item->get_quantity(),
+            'data' => $product,
+        ];
+    }
+
+    return $items;
 }
 
 /**
@@ -3873,6 +3914,31 @@ function bazara_get_realtime_stock_guard_messages(array $errors)
     }
 
     return array_values(array_unique($messages));
+}
+
+/**
+ * Checkout Block از Store API استفاده می‌کند و woocommerce_checkout_process
+ * را اجرا نمی‌کند. استثنا در این hook پیش از ارسال پرداخت، Block را متوقف
+ * می‌کند و هشدار ووکامرس را به کاربر نمایش می‌دهد.
+ */
+function bazara_check_stock_realtime_store_api($order)
+{
+    $messages = bazara_get_realtime_stock_guard_messages(
+        bazara_get_realtime_stock_guard_errors($order)
+    );
+
+    if (empty($messages)) {
+        return;
+    }
+
+    $message = implode(' ', $messages);
+    $exception_class = '\\Automattic\\WooCommerce\\StoreApi\\Exceptions\\RouteException';
+
+    if (class_exists($exception_class)) {
+        throw new $exception_class('bazara_stock_guard_blocked', $message, 409);
+    }
+
+    throw new Exception($message);
 }
 
 /*
