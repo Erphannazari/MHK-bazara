@@ -14,6 +14,7 @@ class BazaraApi
     private $latest_versions;
     private $enable_versioning;
     private $base_url = "https://mahakacc.mahaksoft.com/api/v3/sync";
+    private $lookup_product_info_url = "https://mahakacc.mahaksoft.com/api/v3/Lookup/GetProductInfo";
     private $img_url = "https://mahakacc.mahaksoft.com/api/v3/Content/Images/all/";
     private $login_url = "";
     private $getAll = "";
@@ -53,7 +54,6 @@ class BazaraApi
             'Persons' => ['entity' => 'fromPersonVersion', 'alias' => 'Persons'],
             'VisitorPersons' => ['entity' => 'fromVisitorPersonVersion', 'alias' => 'VisitorPersons'],
             'SubCategory' => ['entity' => 'fromProductCategoryVersion', 'alias' => 'SubCategory'],
-            'Transactions' => ['entity' => 'fromtransactionversion', 'alias' => 'Transactions'],
             'Orders' => ['entity' => 'fromOrderVersion', 'alias' => 'Orders'],
             'OrderDetails' => ['entity' => 'fromOrderDetailVersion', 'alias' => 'OrderDetails'],
 
@@ -172,211 +172,94 @@ class BazaraApi
 
     /*
     |--------------------------------------------------------------------------
-    | دریافت سریع تغییرات موجودی برای کنترل نهایی خرید
+    | دریافت اطلاعات لحظه‌ای یک محصول از API Lookup
     |--------------------------------------------------------------------------
-    | فقط تغییرات بعد از آخرین اجرای Stock Guard دریافت می‌شوند. نسخه‌های این
-    | مسیر از سینک اصلی جدا هستند تا بررسی checkout باعث جاافتادن سینک محصول،
-    | قیمت یا جزئیات در فرآیند عادی افزونه نشود.
+    | فقط محصول مورد نیاز checkout دریافت می‌شود تا کنترل موجودی باعث دریافت
+    | تغییرات تمام محصولات و فشار اضافی روی سایت و سرویس محک نشود.
     */
-    public function quick_fetch_stock_changes()
+    public function lookup_product_info($product_id, $token = '')
     {
-        global $wpdb;
+        $product_id = (int)$product_id;
 
-        $main_versions = get_option('bazara_latest_versions', []);
-        $guard_versions = get_option('bazara_stock_guard_versions', []);
-        $versions = array_merge(
-            [
-                'ProductAsset' => 0,
-                'product' => 0,
-                'productDetail' => 0,
-            ],
-            is_array($main_versions) ? $main_versions : [],
-            is_array($guard_versions) ? $guard_versions : []
-        );
-
-        $response = $this->get_all_data(
-            '',
-            [
-                'fromProductDetailStoreAssetVersion' => $versions['ProductAsset'],
-                'fromProductVersion' => $versions['product'],
-                'fromProductDetailVersion' => $versions['productDetail'],
-            ]
-        );
-
-        if (empty($response['success']) || !is_array($response['message'] ?? null)) {
-            return false;
+        if ($product_id <= 0) {
+            return ['success' => false, 'message' => 'Invalid product ID'];
         }
 
-        $data = $response['message'];
-        $product_details = $data['ProductDetails'] ?? [];
-        $products = $data['Products'] ?? [];
-        $assets = $data['ProductDetailStoreAssets'] ?? [];
+        if (empty($token)) {
+            $token_result = $this->login_token();
 
-        $existing_detail_ids = $this->stock_guard_existing_ids(
-            'bazara_product_details',
-            'ProductDetailId',
-            array_column($product_details, 'ProductDetailId')
-        );
-        $existing_product_ids = $this->stock_guard_existing_ids(
-            'bazara_products',
-            'ProductId',
-            array_column($products, 'ProductId')
-        );
-        $existing_asset_ids = $this->stock_guard_existing_ids(
-            'bazara_product_assets',
-            'ProductDetailStoreAssetId',
-            array_column($assets, 'ProductDetailStoreAssetId')
-        );
-
-        foreach ($product_details as $product_detail) {
-            $detail_id = (int) ($product_detail['ProductDetailId'] ?? 0);
-
-            if ($detail_id <= 0) {
-                continue;
+            if (empty($token_result['success'])) {
+                return [
+                    'success' => false,
+                    'message' => $token_result['message'] ?? 'Token error',
+                ];
             }
 
-            $detail_data = [
-                'ProductDetailId' => $detail_id,
-                'ProductId' => (int) ($product_detail['ProductId'] ?? 0),
-                'Deleted' => (int) ($product_detail['Deleted'] ?? 0),
-                'Properties' => $product_detail['Properties'] ?? null,
-                'RowVersion' => $product_detail['RowVersion'] ?? 0,
+            $token = $token_result['message'];
+        }
+
+        $response = $this->http_get(
+            $this->lookup_product_info_url,
+            ['productId' => $product_id],
+            $token
+        );
+
+        if (empty($response['success'])) {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'خطا در فراخوانی API دریافت اطلاعات محصول',
+                'Error',
+                (string)$product_id
+            );
+
+            return [
+                'success' => false,
+                'message' => 'Lookup request failed',
+                'failure_code' => $response['failure_code'] ?? 'lookup_request_failed',
+                'http_status' => $response['http_status'] ?? 0,
             ];
-
-            $result = isset($existing_detail_ids[$detail_id])
-                ? $wpdb->update(
-                    "{$wpdb->prefix}bazara_product_details",
-                    $detail_data,
-                    ['ProductDetailId' => $detail_id]
-                )
-                : $wpdb->insert("{$wpdb->prefix}bazara_product_details", $detail_data);
-
-            if ($result === false) {
-                return false;
-            }
-
-            $versions['productDetail'] = $this->stock_guard_latest_row_version(
-                $versions['productDetail'],
-                $product_detail['RowVersion'] ?? 0
-            );
         }
 
-        foreach ($products as $product) {
-            $product_id = (int) ($product['ProductId'] ?? 0);
+        $response_body = $response['body'] ?? null;
 
-            if ($product_id <= 0) {
-                continue;
-            }
-
-            if (isset($existing_product_ids[$product_id])) {
-                $result = $wpdb->update(
-                    "{$wpdb->prefix}bazara_products",
-                    ['Deleted' => (int) ($product['Deleted'] ?? 0)],
-                    ['ProductId' => $product_id]
-                );
-
-                if ($result === false) {
-                    return false;
-                }
-            }
-
-            $versions['product'] = $this->stock_guard_latest_row_version(
-                $versions['product'],
-                $product['RowVersion'] ?? 0
+        if (!is_string($response_body) || trim($response_body) === '') {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'پاسخ خالی از API دریافت اطلاعات محصول',
+                'Error',
+                (string)$product_id
             );
-        }
 
-        foreach ($assets as $asset) {
-            $asset_id = (int) ($asset['ProductDetailStoreAssetId'] ?? 0);
-
-            if ($asset_id <= 0) {
-                continue;
-            }
-
-            $asset_data = [
-                'ProductDetailStoreAssetId' => $asset_id,
-                'ProductDetailId' => (int) ($asset['ProductDetailId'] ?? 0),
-                'Count1' => (float) ($asset['Count1'] ?? 0),
-                'Count2' => (float) ($asset['Count2'] ?? 0),
-                'StoreId' => (int) ($asset['StoreId'] ?? 0),
-                'Deleted' => (int) ($asset['Deleted'] ?? 0),
-                'RowVersion' => $asset['RowVersion'] ?? 0,
+            return [
+                'success' => false,
+                'message' => 'Empty API response',
+                'failure_code' => 'empty_lookup_response',
             ];
+        }
 
-            $result = isset($existing_asset_ids[$asset_id])
-                ? $wpdb->update(
-                    "{$wpdb->prefix}bazara_product_assets",
-                    $asset_data,
-                    ['ProductDetailStoreAssetId' => $asset_id]
-                )
-                : $wpdb->insert("{$wpdb->prefix}bazara_product_assets", $asset_data);
+        $decoded = json_decode($response_body, true);
+        $result_is_success = is_array($decoded)
+            && array_key_exists('Result', $decoded)
+            && ($decoded['Result'] === true
+                || $decoded['Result'] === 1
+                || strcasecmp((string)$decoded['Result'], 'true') === 0);
 
-            if ($result === false) {
-                return false;
-            }
-
-            $versions['ProductAsset'] = $this->stock_guard_latest_row_version(
-                $versions['ProductAsset'],
-                $asset['RowVersion'] ?? 0
+        if (!$result_is_success || !isset($decoded['Data']['Objects']) || !is_array($decoded['Data']['Objects'])) {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'پاسخ نامعتبر از API دریافت اطلاعات محصول',
+                'Error',
+                json_encode($decoded)
             );
+
+            return [
+                'success' => false,
+                'message' => 'Invalid API response',
+                'failure_code' => 'invalid_lookup_response',
+            ];
         }
 
-        update_option(
-            'bazara_stock_guard_versions',
-            [
-                'ProductAsset' => $versions['ProductAsset'],
-                'product' => $versions['product'],
-                'productDetail' => $versions['productDetail'],
-            ],
-            false
-        );
-
-        return true;
-    }
-
-    /**
-     * شناسه‌های موجود را با یک query دریافت می‌کند تا از query به‌ازای هر ردیف
-     * در پاسخ API جلوگیری شود.
-     */
-    private function stock_guard_existing_ids($table, $field, array $ids)
-    {
-        global $wpdb;
-
-        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
-
-        if (empty($ids)) {
-            return [];
-        }
-
-        $placeholders = implode(',', array_fill(0, count($ids), '%d'));
-        $existing_ids = $wpdb->get_col(
-            $wpdb->prepare(
-                "SELECT {$field} FROM {$wpdb->prefix}{$table} WHERE {$field} IN ({$placeholders})",
-                ...$ids
-            )
-        );
-
-        return array_fill_keys(array_map('intval', $existing_ids), true);
-    }
-
-    /**
-     * RowVersion ممکن است از محدوده integer PHP بزرگ‌تر باشد؛ مقایسه رشته‌ای
-     * از گرد شدن نسخه و دریافت دوباره داده‌های قدیمی جلوگیری می‌کند.
-     */
-    private function stock_guard_latest_row_version($current, $candidate)
-    {
-        $current = ltrim((string) $current, '0') ?: '0';
-        $candidate = ltrim((string) $candidate, '0') ?: '0';
-
-        if (strlen($candidate) > strlen($current)) {
-            return $candidate;
-        }
-
-        if (strlen($candidate) === strlen($current) && strcmp($candidate, $current) > 0) {
-            return $candidate;
-        }
-
-        return $current;
+        return [
+            'success' => true,
+            'message' => $decoded['Data']['Objects'],
+        ];
     }
 
     public function repair_entities($token = '', $url = '', $input = [])
@@ -511,7 +394,9 @@ class BazaraApi
         }
         $jObj = json_decode($result, true);
 
-        $active_sync = toggle_to_boolean(sanitize_text_field($_REQUEST['active_auto_sync']));
+        $active_sync = isset($_REQUEST['active_auto_sync'])
+            ? toggle_to_boolean(sanitize_text_field(wp_unslash($_REQUEST['active_auto_sync'])))
+            : !empty($this->plugin_options['active_auto_sync']);
 
         if ($jObj['Result'] == "True") {
             $options = [
@@ -552,6 +437,44 @@ class BazaraApi
             return null;
         }
         return $result = $response['body'];
+    }
+
+    private function http_get($url, array $params, $bearerToken = '')
+    {
+        $response = wp_remote_get(
+            add_query_arg($params, $url),
+            [
+                'timeout' => 10,
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . trim($bearerToken),
+                ],
+            ]
+        );
+
+        if (is_wp_error($response)) {
+            return [
+                'success' => false,
+                'failure_code' => 'network_error',
+            ];
+        }
+
+        $http_status = (int)wp_remote_retrieve_response_code($response);
+
+        if ($http_status !== 200) {
+            return [
+                'success' => false,
+                'failure_code' => in_array($http_status, [401, 403], true)
+                    ? 'authentication_failed'
+                    : 'lookup_http_error',
+                'http_status' => $http_status,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'body' => wp_remote_retrieve_body($response),
+        ];
     }
 
     private function create_woo_tax($taxPercent = 0)
@@ -2106,40 +2029,6 @@ class BazaraApi
                         ];
 
                         insert('bazara_visitor_persons', $product_items, 'VisitorPersonId', $visitorPerson['VisitorPersonId']);
-                    }
-                }
-                break;
-
-            case 'Transactions':
-                $Transactions = $product_result['message']['Transactions'];
-                if (!empty($Transactions)) {
-                    usort($Transactions, function ($item1, $item2) {
-                        if ($item1['RowVersion'] == $item2['RowVersion'])
-                            return 0;
-                        return $item1['RowVersion'] < $item2['RowVersion'] ? -1 : 1;
-                    });
-                    foreach ($Transactions as $Transaction) {
-
-                        $product_items = [
-                            'TransactionId' => $Transaction['TransactionId'],
-                            'Row' => ($Transaction['Row']),
-                            'PersonId' => ($Transaction['PersonId']),
-                            'Type' => ($Transaction['Type']),
-                            'DebtAmount' => $Transaction['DebtAmount'],
-                            'CreditAmount' => $Transaction['CreditAmount'],
-                            'Balance' => $Transaction['Balance'],
-                            'Status' => $Transaction['Status'],
-                            'Description' => $Transaction['Description'],
-                            'CreateDate' => $Transaction['CreateDate'],
-                            'UpdateDate' => $Transaction['UpdateDate'],
-                            'Deleted' => ($Transaction['Deleted'] == 'true' ? 1 : 0),
-                            'RowVersion' => $Transaction['RowVersion'],
-                            'Date' => $Transaction['Date'],
-
-                        ];
-
-                        insert('bazara_transactions', $product_items, 'TransactionId', $Transaction['TransactionId']);
-                        bazara_update_latest_versions('transactions', $Transaction['RowVersion']);
                     }
                 }
                 break;

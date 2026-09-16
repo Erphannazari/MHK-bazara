@@ -6,6 +6,9 @@ $bank_methods_json = stripslashes($visitorOption['banksMethods']);
 $shipping_methods_json = stripslashes($visitorOption['carrierMethods']);
 $sync_order_id = $visitorOption['chkLastOrderID'] ;
 $last_order_id = $visitorOption['order_id_greater_than'];
+$stock_guard_effective = function_exists('bazara_stock_guard_should_run')
+    ? bazara_stock_guard_should_run((array)$visitorOption)
+    : (!empty($visitorOption['chkProduct']) && !empty($visitorOption['chkQuantity']) && !empty($visitorOption['chkRealtimeStockGuard']));
 
 ?> 
 <script>
@@ -89,6 +92,44 @@ $last_order_id = $visitorOption['order_id_greater_than'];
     });
     
 </script>
+<div class="subform">
+    <div class="order-section">
+        <table class="form-table">
+            <tbody>
+                <tr>
+                    <th scope="row" valign="top" style="vertical-align: top;"></th>
+                </tr>
+                <tr>
+                    <td width="5%">
+                        <div class="input-switch">
+                            <input
+                                type="checkbox"
+                                class="bazara_wp_products_inte"
+                                name="bazara_realtime_stock_guard"
+                                id="bazara_realtime_stock_guard"
+                                <?= $stock_guard_effective ? 'checked' : '' ?>
+                            >
+                            <label for="bazara_realtime_stock_guard"></label>
+                            <span class="status_text yes"></span>
+                            <span class="status_text no"></span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="bazara-div_for_caption">
+                            <label for="bazara_realtime_stock_guard" class="top-10">
+                                کنترل لحظه‌ای موجودی پیش از ثبت سفارش
+                            </label>
+                            <span class="bazara-caption">
+                                پیش از نهایی‌شدن خرید، موجودی همان محصول در محک بررسی می‌شود تا
+                                از فروش بیشتر از موجودی قابل‌فروش جلوگیری شود.
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 <div class="subform">
 <div class="order-section" data-select2-id="104">
                                         <table class="form-table  " data-select2-id="103">
