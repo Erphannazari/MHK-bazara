@@ -6,8 +6,9 @@ $bank_methods_json = stripslashes($visitorOption['banksMethods']);
 $shipping_methods_json = stripslashes($visitorOption['carrierMethods']);
 $sync_order_id = $visitorOption['chkLastOrderID'] ;
 $last_order_id = $visitorOption['order_id_greater_than'];
-$realtime_stock_guard_toggle = !array_key_exists('chkRealtimeStockGuard', (array)$visitorOption)
-    || !empty($visitorOption['chkRealtimeStockGuard']);
+$stock_guard_effective = function_exists('bazara_stock_guard_should_run')
+    ? bazara_stock_guard_should_run((array)$visitorOption)
+    : (!empty($visitorOption['chkProduct']) && !empty($visitorOption['chkQuantity']) && !empty($visitorOption['chkRealtimeStockGuard']));
 
 ?> 
 <script>
@@ -106,7 +107,7 @@ $realtime_stock_guard_toggle = !array_key_exists('chkRealtimeStockGuard', (array
                                 class="bazara_wp_products_inte"
                                 name="bazara_realtime_stock_guard"
                                 id="bazara_realtime_stock_guard"
-                                <?= $realtime_stock_guard_toggle ? 'checked' : '' ?>
+                                <?= $stock_guard_effective ? 'checked' : '' ?>
                             >
                             <label for="bazara_realtime_stock_guard"></label>
                             <span class="status_text yes"></span>

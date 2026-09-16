@@ -204,17 +204,38 @@ class BazaraApi
             $token
         );
 
-        if (!is_string($response) || trim($response) === '') {
+        if (empty($response['success'])) {
+            Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
+                'خطا در فراخوانی API دریافت اطلاعات محصول',
+                'Error',
+                (string)$product_id
+            );
+
+            return [
+                'success' => false,
+                'message' => 'Lookup request failed',
+                'failure_code' => $response['failure_code'] ?? 'lookup_request_failed',
+                'http_status' => $response['http_status'] ?? 0,
+            ];
+        }
+
+        $response_body = $response['body'] ?? null;
+
+        if (!is_string($response_body) || trim($response_body) === '') {
             Bz_Import_Export_For_Woo_Basic_Logwriter::write_log(
                 'پاسخ خالی از API دریافت اطلاعات محصول',
                 'Error',
                 (string)$product_id
             );
 
-            return ['success' => false, 'message' => 'Empty API response'];
+            return [
+                'success' => false,
+                'message' => 'Empty API response',
+                'failure_code' => 'empty_lookup_response',
+            ];
         }
 
-        $decoded = json_decode($response, true);
+        $decoded = json_decode($response_body, true);
         $result_is_success = is_array($decoded)
             && array_key_exists('Result', $decoded)
             && ($decoded['Result'] === true
@@ -228,7 +249,11 @@ class BazaraApi
                 json_encode($decoded)
             );
 
-            return ['success' => false, 'message' => 'Invalid API response'];
+            return [
+                'success' => false,
+                'message' => 'Invalid API response',
+                'failure_code' => 'invalid_lookup_response',
+            ];
         }
 
         return [
@@ -427,11 +452,29 @@ class BazaraApi
             ]
         );
 
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-            return null;
+        if (is_wp_error($response)) {
+            return [
+                'success' => false,
+                'failure_code' => 'network_error',
+            ];
         }
 
-        return wp_remote_retrieve_body($response);
+        $http_status = (int)wp_remote_retrieve_response_code($response);
+
+        if ($http_status !== 200) {
+            return [
+                'success' => false,
+                'failure_code' => in_array($http_status, [401, 403], true)
+                    ? 'authentication_failed'
+                    : 'lookup_http_error',
+                'http_status' => $http_status,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'body' => wp_remote_retrieve_body($response),
+        ];
     }
 
     private function create_woo_tax($taxPercent = 0)

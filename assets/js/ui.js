@@ -180,6 +180,57 @@ jQuery(document).ready(function () {
 
     });
 
+    // الگوی یکسان با گیت ماژول‌های سینک: تلاش برای فعال‌سازی بدون
+    // پیش‌نیاز، تیک را برمی‌گرداند و همان پاپ‌آپ خطای سیستم را نشان می‌دهد.
+    jQuery('#bazara_realtime_stock_guard').on('change', function () {
+        if (jQuery(this).is(':checked') && !bazaraStockGuardPrereqMet()) {
+            jQuery(this).prop('checked', false);
+            showBazaraErrorMessage('کنترل لحظه‌ای موجودی فقط وقتی فعال می‌شود که همگام‌سازی محصولات و تیک موجودی هر دو روشن باشند.');
+        }
+    });
+
+    jQuery(document).on('click', '#bazara_copy_mahak_user_token', function () {
+        var button = jQuery(this);
+
+        if (button.prop('disabled')) {
+            return;
+        }
+
+        button.prop('disabled', true);
+
+        jQuery.ajax({
+            url: params.ajax_url,
+            type: 'post',
+            data: {
+                action: 'bazara_copy_mahak_user_token',
+                security: params.ajax_nonce
+            }
+        }).done(function (response) {
+            var token = response && response.success && response.data
+                ? response.data.token
+                : '';
+
+            if (typeof token !== 'string' || token === '') {
+                showBazaraErrorMessage(
+                    response && response.data && response.data.message
+                        ? response.data.message
+                        : 'توکن معتبر محک در دسترس نیست.'
+                );
+                return;
+            }
+
+            bazaraCopyToClipboard(token).then(function () {
+                showBazaraSuccessMessage('توکن اتصال محک کپی شد.');
+            }).catch(function () {
+                showBazaraErrorMessage('کپی توکن در مرورگر انجام نشد.');
+            });
+        }).fail(function () {
+            showBazaraErrorMessage('دریافت توکن اتصال محک ناموفق بود.');
+        }).always(function () {
+            button.prop('disabled', false);
+        });
+    });
+
     jQuery('#bazara_entity_sync_toggle').change(function () {
         if (jQuery(this).is(':checked') && jQuery('#bazara_product_batch_sync_toggle').is(':checked')) {
             jQuery(this).prop('checked', false);
@@ -220,6 +271,38 @@ jQuery(document).ready(function () {
     
       
 });
+
+function bazaraCopyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise(function (resolve, reject) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+
+        try {
+            var copied = document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            if (copied) {
+                resolve();
+                return;
+            }
+        } catch (error) {
+            document.body.removeChild(textarea);
+            reject(error);
+            return;
+        }
+
+        reject(new Error('Clipboard copy failed'));
+    });
+}
 function draggable_body(){
     
 }
@@ -524,7 +607,15 @@ function check_user_validate(){
     jQuery('#bazaraModalSupportLogin').fadeIn();
 }
 
+function bazaraStockGuardPrereqMet(){
+    return jQuery('#bazara_sync_product_toggle').is(':checked') && jQuery('#chkQuantity').is(':checked');
+}
+
 function check_login_sync(){
+    if (jQuery('#bazara_realtime_stock_guard').is(':checked') && !bazaraStockGuardPrereqMet()) {
+        showBazaraErrorMessage('کنترل لحظه‌ای موجودی فقط وقتی فعال می‌شود که همگام‌سازی محصولات و تیک موجودی هر دو روشن باشند.');
+        return;
+    }
     jQuery.ajax({
         url: params.ajax_url,
         type: 'post',
@@ -578,6 +669,10 @@ function save_form_setting() {
         data : jQuery('#bazara_form_setting').serialize() + "&security="+params.ajax_nonce + "&action=bazara_save_settings",
         success : function( response ) {
             jQuery(this).removeClass('loading').addClass('success');
+            if (response && response.success === false) {
+                showBazaraErrorMessage(response.result || 'خطا در ذخیره اطلاعات');
+                return;
+            }
             showBazaraSuccessMessage("تنظیمات ذخیره شد");
 
         }

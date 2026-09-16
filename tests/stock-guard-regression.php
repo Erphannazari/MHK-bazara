@@ -43,6 +43,13 @@ function current_time($type)
     return time();
 }
 
+if (!function_exists('sanitize_key')) {
+    function sanitize_key($key)
+    {
+        return preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) $key));
+    }
+}
+
 final class Bazara_Stock_Guard_Test_Product
 {
     private $name;
@@ -344,7 +351,25 @@ $failed_lookup_guard = new Bazara_Stock_Guard(
 );
 
 bazara_stock_guard_assert_same(
-    [['reason' => 'verification_failed']],
+    [
+        [
+            'reason' => 'verification_failed',
+            'failure_code' => 'lookup_failed',
+            'review_items' => [
+                [
+                    'name' => 'ماکارونی',
+                    'quantity' => 1.0,
+                    'wc_product_id' => 502,
+                    'wc_variation_id' => 0,
+                    'sku' => '',
+                    'variation_attributes' => [],
+                    'mahak_product_id' => 10074041,
+                    'mahak_detail_id' => 11419384,
+                    'mahak_store_asset_id' => 0,
+                ],
+            ],
+        ],
+    ],
     $failed_lookup_guard->validate_cart([
         [
             'product_id' => 502,

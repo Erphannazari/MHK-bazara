@@ -62,6 +62,9 @@ function bazara_settings_visitor()
         'chkRadioCat' => true,
         'chkRadioCatGroup' => true,
         'chkCustomerMahak' => true,
+        'chkCustomersMahak' => false,
+        'radioCustomer' => '',
+        'chkGuestCustomer' => false,
         'chkProductsRolePrice' => true,
         'selectCurrencySoftware' => 'rial',
         'selectCurrencyPlugin' => 'toman',
@@ -736,8 +739,42 @@ function bazara_get_sync_percentage()
 }
 add_action('wp_ajax_bazara_check_user_access', 'bazara_check_user_access_ajax');
 add_action('wp_ajax_bazara_check_support_login', 'bazara_check_support_login_ajax');
+add_action('wp_ajax_bazara_copy_mahak_user_token', 'bazara_copy_mahak_user_token_ajax');
 add_action('wp_ajax_nopriv_bazara_save_settings', 'bazara_save_settings');
 add_action('wp_ajax_bazara_save_settings', 'bazara_save_settings');
+
+/**
+ * UserToken ذخیره‌شده را فقط برای مدیر وردپرس و بدون refresh خودکار برمی‌گرداند.
+ */
+function bazara_copy_mahak_user_token_ajax()
+{
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'شما اجازه دریافت توکن اتصال محک را ندارید.'], 403);
+    }
+
+    check_ajax_referer('bazara_security', 'security');
+    $login_option = get_option('bazara_login');
+    $token = is_array($login_option) && isset($login_option['token']) && is_string($login_option['token'])
+        ? $login_option['token']
+        : '';
+    $expires_at = is_array($login_option) ? (int)($login_option['expireAt'] ?? 0) : 0;
+
+    if ($token === '' || $expires_at < time()) {
+        wp_send_json_error(['message' => 'توکن معتبر محک ذخیره نشده یا منقضی شده است.']);
+    }
+
+    if (function_exists('bazara_save_log')) {
+        bazara_save_log(
+            current_time('Y-m-d H:i:s'),
+            'کپی توکن اتصال محک',
+            'کاربر مدیر با شناسه ' . get_current_user_id() . ' توکن اتصال محک را کپی کرد.',
+            1
+        );
+    }
+
+    nocache_headers();
+    wp_send_json_success(['token' => $token]);
+}
 
 // شروع همگام‌سازی تنظیمات دیتابیس
 const bazaraOptionsNeedSupportAccess = [
@@ -971,6 +1008,18 @@ function bazara_save_settings()
     $options = bazara_convert_request_to_options(true);
     global $wpdb;
 
+    // تلاش صریح برای روشن‌کردن کنترل لحظه‌ای موجودی بدون پیش‌نیاز
+    // (همگام‌سازی محصولات + تیک موجودی) با خطای فارسی رد می‌شود.
+    // خاموش‌شدن پیش‌نیاز در حالی که گارد روشن بوده، بی‌صدا forced-off
+    // می‌شود و خطا برنمی‌گرداند.
+    $guard_requested = toggle_to_boolean(sanitize_text_field($_REQUEST['bazara_realtime_stock_guard'] ?? ''));
+    if ($guard_requested && !bazara_stock_guard_should_run($options)) {
+        wp_send_json([
+            'success' => false,
+            'result' => 'کنترل لحظه‌ای موجودی فقط وقتی فعال می‌شود که همگام‌سازی محصولات و تیک موجودی هر دو روشن باشند.',
+        ]);
+    }
+
     if ($setting_Options['chkSalePrice'] && !$options['chkSalePrice']) {
 
         $wpdb->query("UPDATE {$wpdb->prefix}postmeta as p1 SET p1.meta_value=IFNULL((select meta_value from {$wpdb->prefix}postmeta where meta_key='_regular_price' and post_id=p1.post_id),0) WHERE meta_key='_price' AND p1.post_id IN (select * from (select post_id from {$wpdb->prefix}postmeta where meta_key='mahak_id' or mahak_key='mahak_product_detail_id') as t);");
@@ -1107,6 +1156,13 @@ function bazara_convert_request_to_options($hasRequest = false)
         'bazara_regular_multiprice_discount_price_select' => $_REQUEST['bazara_regular_multiprice_discount_price_select'] ?? '',
         'bazara_regular_multiprice_role_discount' => $_REQUEST['bazara_regular_multiprice_role_discount'] ?? '',
     ];
+
+    // کنترل لحظه‌ای موجودی فقط وقتی معنا دارد که همگام‌سازی محصولات و تیک
+    // موجودی هر دو روشن باشند؛ در غیر این صورت بی‌صدا خاموش می‌ماند تا
+    // checkout هم از مسیر gate آن را off ببیند.
+    if (!bazara_stock_guard_should_run($options)) {
+        $options['chkRealtimeStockGuard'] = false;
+    }
 
     return $options;
 }
@@ -3782,20 +3838,46 @@ function get_wp_roles()
 
 add_action('woocommerce_checkout_process', 'bazara_check_stock_realtime');
 add_action('woocommerce_store_api_checkout_order_processed', 'bazara_check_stock_realtime_store_api');
+add_action('woocommerce_checkout_order_processed', 'bazara_log_stock_guard_review_after_classic_checkout', 10, 3);
+add_action('init', 'bazara_schedule_stock_guard_review_log_cleanup');
+add_action('bazara_prune_stock_guard_review_logs', 'bazara_prune_stock_guard_review_logs');
 
 /**
- * برای نصب‌های قبلی که هنوز کلید تنظیمات را ندارند، رفتار محافظه‌کارانه و
- * سازگار با قابلیت قدیمی، فعال‌بودن Stock Guard است.
+ * تک‌منبع شرط اجرای Stock Guard: هر سه تیک روشن باشند.
  */
+function bazara_stock_guard_should_run($settings = null)
+{
+    if (!is_array($settings)) {
+        $settings = get_bazara_visitor_settings();
+    }
+
+    if (!is_array($settings)) {
+        return false;
+    }
+
+    return !empty($settings['chkProduct'])
+        && !empty($settings['chkQuantity'])
+        && !empty($settings['chkRealtimeStockGuard']);
+}
+
 function bazara_stock_guard_is_enabled()
 {
     $settings = get_bazara_visitor_settings();
 
-    if (!array_key_exists('chkRealtimeStockGuard', $settings)) {
-        return true;
-    }
+    return is_array($settings) && !empty($settings['chkRealtimeStockGuard']);
+}
 
-    return !empty($settings['chkRealtimeStockGuard']);
+/**
+ * حالت gate کنترل موجودی بر اساس هر سه تیک.
+ *
+ * - 'off': همگام‌سازی محصولات (chkProduct)، تیک موجودی (chkQuantity) یا
+ *   کنترل لحظه‌ای (chkRealtimeStockGuard) خاموش → سفارش بدون بلاک و بدون لاگ رد می‌شود.
+ * - 'enforce': هر سه روشن → بلاک روی خطای قطعی موجودی؛ فقط روی قطعی
+ *   اتصال محک (verification_failed) لاگ نوشته و سفارش رد می‌شود.
+ */
+function bazara_stock_guard_gate_mode()
+{
+    return bazara_stock_guard_should_run() ? 'enforce' : 'off';
 }
 
 /*
@@ -3809,7 +3891,15 @@ function bazara_check_stock_realtime()
 {
     $errors = bazara_get_realtime_stock_guard_errors();
 
-    foreach (bazara_get_realtime_stock_guard_messages($errors) as $message) {
+    $review_error = bazara_stock_guard_get_review_error($errors);
+
+    if ($review_error !== null) {
+        $GLOBALS['bazara_stock_guard_pending_review_error'] = $review_error;
+    }
+
+    foreach (bazara_get_realtime_stock_guard_messages(
+        bazara_stock_guard_get_blocking_errors($errors)
+    ) as $message) {
         wc_add_notice($message, 'error');
     }
 }
@@ -3822,7 +3912,7 @@ function bazara_check_stock_realtime()
  */
 function bazara_get_realtime_stock_guard_errors($order = null)
 {
-    if (!bazara_stock_guard_is_enabled()) {
+    if (bazara_stock_guard_gate_mode() === 'off') {
         return [];
     }
 
@@ -3883,6 +3973,30 @@ function bazara_get_stock_guard_items_from_order($order)
 }
 
 /**
+ * فقط خطاهایی که وضعیت قطعی موجودی را مشخص کرده‌اند checkout را متوقف می‌کنند.
+ */
+function bazara_stock_guard_get_blocking_errors(array $errors)
+{
+    return array_values(array_filter($errors, function ($error) {
+        return ($error['reason'] ?? '') !== 'verification_failed';
+    }));
+}
+
+/**
+ * یک checkout در صورت نبود ارتباط محک فقط یک رخداد بازبینی ثبت می‌کند.
+ */
+function bazara_stock_guard_get_review_error(array $errors)
+{
+    foreach ($errors as $error) {
+        if (($error['reason'] ?? '') === 'verification_failed') {
+            return $error;
+        }
+    }
+
+    return null;
+}
+
+/**
  * خطاهای کنترل موجودی را به پیام‌های قابل‌نمایش ووکامرس تبدیل می‌کند.
  */
 function bazara_get_realtime_stock_guard_messages(array $errors)
@@ -3891,7 +4005,14 @@ function bazara_get_realtime_stock_guard_messages(array $errors)
 
     foreach ($errors as $error) {
         if (($error['reason'] ?? '') === 'verification_failed') {
-            $messages[] = __('امکان بررسی لحظه‌ای موجودی محک وجود ندارد. لطفاً چند لحظه دیگر دوباره تلاش کنید.', 'bazara');
+            continue;
+        }
+
+        if (($error['reason'] ?? '') === 'mapping_invalid') {
+            $messages[] = sprintf(
+                __('اطلاعات اتصال محصول «%s» به محک کامل نیست. لطفاً با پشتیبانی تماس بگیرید.', 'bazara'),
+                $error['name'] ?? ''
+            );
             continue;
         }
 
@@ -3923,22 +4044,702 @@ function bazara_get_realtime_stock_guard_messages(array $errors)
  */
 function bazara_check_stock_realtime_store_api($order)
 {
+    $errors = bazara_get_realtime_stock_guard_errors($order);
     $messages = bazara_get_realtime_stock_guard_messages(
-        bazara_get_realtime_stock_guard_errors($order)
+        bazara_stock_guard_get_blocking_errors($errors)
     );
 
-    if (empty($messages)) {
+    if (!empty($messages)) {
+        $message = implode(' ', $messages);
+        $exception_class = '\\Automattic\\WooCommerce\\StoreApi\\Exceptions\\RouteException';
+
+        if (class_exists($exception_class)) {
+            throw new $exception_class('bazara_stock_guard_blocked', $message, 409);
+        }
+
+        throw new Exception($message);
+    }
+
+    $review_error = bazara_stock_guard_get_review_error($errors);
+
+    if ($review_error === null) {
         return;
     }
 
-    $message = implode(' ', $messages);
-    $exception_class = '\\Automattic\\WooCommerce\\StoreApi\\Exceptions\\RouteException';
+    bazara_stock_guard_write_review_log($order, $review_error, 'store_api');
+}
 
-    if (class_exists($exception_class)) {
-        throw new $exception_class('bazara_stock_guard_blocked', $message, 409);
+/**
+ * در checkout کلاسیک شناسه سفارش پس از validation ساخته می‌شود؛ نتیجه همان
+ * درخواست را بعد از ساخت سفارش ثبت می‌کنیم تا Lookup دوباره فراخوانی نشود.
+ */
+function bazara_log_stock_guard_review_after_classic_checkout($order_id, $posted_data, $order)
+{
+    $review_error = $GLOBALS['bazara_stock_guard_pending_review_error'] ?? null;
+    unset($GLOBALS['bazara_stock_guard_pending_review_error']);
+
+    if (!is_array($review_error)) {
+        return;
     }
 
-    throw new Exception($message);
+    if ((!is_object($order) || !method_exists($order, 'get_id')) && function_exists('wc_get_order')) {
+        $order = wc_get_order($order_id);
+    }
+
+    bazara_stock_guard_write_review_log($order, $review_error, 'classic');
+}
+
+/**
+ * رخدادهای نیازمند بررسی دستی را بدون اطلاعات مشتری یا اطلاعات محرمانه ثبت می‌کند.
+ */
+function bazara_stock_guard_write_review_log($order, array $review_error, $checkout_channel)
+{
+    if (!is_object($order) || !method_exists($order, 'get_id')) {
+        return false;
+    }
+
+    $existing_event_id = method_exists($order, 'get_meta')
+        ? $order->get_meta('_bazara_stock_guard_review_event_id', true)
+        : '';
+
+    if (!empty($existing_event_id)) {
+        return true;
+    }
+
+    $items = bazara_stock_guard_normalize_review_items($review_error['review_items'] ?? []);
+
+    if (empty($items)) {
+        $items = bazara_stock_guard_build_review_items_from_order($order);
+    }
+
+    $event = [
+        'version' => 1,
+        'event_id' => wp_generate_uuid4(),
+        'occurred_at' => current_time('mysql'),
+        'order_id' => (int)$order->get_id(),
+        'order_number' => method_exists($order, 'get_order_number')
+            ? sanitize_text_field((string)$order->get_order_number())
+            : (string)$order->get_id(),
+        'order_status' => method_exists($order, 'get_status')
+            ? sanitize_key((string)$order->get_status())
+            : '',
+        'checkout_channel' => $checkout_channel === 'store_api' ? 'store_api' : 'classic',
+        'reason' => 'verification_failed',
+        'failure_code' => sanitize_key($review_error['failure_code'] ?? 'lookup_failed'),
+        'items' => $items,
+    ];
+
+    $was_written = bazara_stock_guard_append_review_event($event);
+
+    if (method_exists($order, 'update_meta_data')) {
+        if ($was_written) {
+            $order->update_meta_data('_bazara_stock_guard_review_event_id', $event['event_id']);
+        }
+
+        $order->update_meta_data(
+            '_bazara_stock_guard_review_log_status',
+            $was_written ? 'written' : 'write_failed'
+        );
+
+        if (method_exists($order, 'save')) {
+            $order->save();
+        }
+    }
+
+    if (!$was_written && function_exists('bazara_save_log')) {
+        bazara_save_log(
+            current_time('Y-m-d H:i:s'),
+            'خطا در ذخیره گزارش بررسی موجودی محک',
+            'سفارش #' . $event['order_number'] . ' به بررسی دستی نیاز دارد.',
+            0
+        );
+    }
+
+    return $was_written;
+}
+
+/**
+ * در حالت fallback، اطلاعات اقلام محکی را مستقیماً از سفارش استخراج می‌کند.
+ */
+function bazara_stock_guard_build_review_items_from_order($order)
+{
+    if (!is_object($order) || !method_exists($order, 'get_items')) {
+        return [];
+    }
+
+    $items = [];
+
+    foreach ($order->get_items() as $order_item) {
+        if (!is_object($order_item) || !method_exists($order_item, 'get_product_id')) {
+            continue;
+        }
+
+        $product_id = (int)$order_item->get_product_id();
+        $variation_id = method_exists($order_item, 'get_variation_id')
+            ? (int)$order_item->get_variation_id()
+            : 0;
+        $target_id = $variation_id > 0 ? $variation_id : $product_id;
+        $mahak_product_id = (int)get_post_meta($product_id, 'mahak_id', true);
+        $mahak_detail_id = (int)get_post_meta($target_id, 'mahak_product_detail_id', true);
+
+        if ($mahak_product_id <= 0 && $mahak_detail_id <= 0) {
+            continue;
+        }
+
+        $product = method_exists($order_item, 'get_product') ? $order_item->get_product() : null;
+
+        if (!$product && function_exists('wc_get_product')) {
+            $product = wc_get_product($target_id);
+        }
+
+        $variation_attributes = $variation_id > 0
+            && $product
+            && method_exists($product, 'get_variation_attributes')
+            ? $product->get_variation_attributes()
+            : [];
+
+        $items[] = [
+            'name' => $product && method_exists($product, 'get_name')
+                ? $product->get_name()
+                : (method_exists($order_item, 'get_name') ? $order_item->get_name() : '#' . $target_id),
+            'quantity' => method_exists($order_item, 'get_quantity') ? (float)$order_item->get_quantity() : 0,
+            'wc_product_id' => $product_id,
+            'wc_variation_id' => $variation_id,
+            'sku' => $product && method_exists($product, 'get_sku') ? $product->get_sku() : '',
+            'variation_attributes' => is_array($variation_attributes) ? $variation_attributes : [],
+            'mahak_product_id' => $mahak_product_id,
+            'mahak_detail_id' => $mahak_detail_id,
+            'mahak_store_asset_id' => (int)get_post_meta($target_id, 'prop_id', true),
+        ];
+    }
+
+    return bazara_stock_guard_normalize_review_items($items);
+}
+
+/**
+ * فقط داده‌های لازم برای پیگیری موجودی را به فایل گزارش منتقل می‌کند.
+ */
+function bazara_stock_guard_normalize_review_items(array $items)
+{
+    $normalized_items = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $attributes = [];
+
+        foreach ((array)($item['variation_attributes'] ?? []) as $key => $value) {
+            $attributes[sanitize_key((string)$key)] = sanitize_text_field((string)$value);
+        }
+
+        $normalized_items[] = [
+            'name' => sanitize_text_field((string)($item['name'] ?? '')),
+            'quantity' => (float)($item['quantity'] ?? 0),
+            'wc_product_id' => (int)($item['wc_product_id'] ?? 0),
+            'wc_variation_id' => (int)($item['wc_variation_id'] ?? 0),
+            'sku' => sanitize_text_field((string)($item['sku'] ?? '')),
+            'variation_attributes' => $attributes,
+            'mahak_product_id' => (int)($item['mahak_product_id'] ?? 0),
+            'mahak_detail_id' => (int)($item['mahak_detail_id'] ?? 0),
+            'mahak_store_asset_id' => (int)($item['mahak_store_asset_id'] ?? 0),
+        ];
+    }
+
+    return $normalized_items;
+}
+
+function bazara_stock_guard_review_log_directory()
+{
+    return trailingslashit(WP_CONTENT_DIR) . 'bazara_log/stock-guard-reviews';
+}
+
+function bazara_stock_guard_ensure_review_log_directory()
+{
+    $directory = bazara_stock_guard_review_log_directory();
+
+    if (!is_dir($directory) && !wp_mkdir_p($directory)) {
+        return false;
+    }
+
+    @chmod($directory, 0700);
+
+    $guard_files = [
+        'index.php' => "<?php\nhttp_response_code(404);\nexit;\n",
+        '.htaccess' => "Require all denied\nDeny from all\n",
+    ];
+
+    foreach ($guard_files as $filename => $contents) {
+        $path = trailingslashit($directory) . $filename;
+
+        if (!file_exists($path)) {
+            @file_put_contents($path, $contents, LOCK_EX);
+            @chmod($path, 0640);
+        }
+    }
+
+    return is_dir($directory) && is_writable($directory);
+}
+
+function bazara_stock_guard_review_log_file_path($date = '')
+{
+    $date = $date ?: current_time('Y-m-d');
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return '';
+    }
+
+    return trailingslashit(bazara_stock_guard_review_log_directory())
+        . 'stock-guard-review-' . $date . '.log.php';
+}
+
+/**
+ * فایل PHP فقط به‌صورت مستقیم از وب قابل اجراست و هیچ payloadی برنمی‌گرداند؛
+ * پنل ادمین داده JSONL بعد از header را به‌صورت server-side می‌خواند.
+ */
+function bazara_stock_guard_review_log_file_header()
+{
+    return "<?php\nif (!defined('ABSPATH')) {\n    http_response_code(404);\n    exit;\n}\n__halt_compiler();\n";
+}
+
+function bazara_stock_guard_append_review_event(array $event)
+{
+    if (!bazara_stock_guard_ensure_review_log_directory()) {
+        return false;
+    }
+
+    $file_path = bazara_stock_guard_review_log_file_path();
+    $encoded_event = wp_json_encode($event, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if (empty($file_path) || !is_string($encoded_event) || $encoded_event === '') {
+        return false;
+    }
+
+    $handle = @fopen($file_path, 'c+');
+
+    if (!is_resource($handle) || !@flock($handle, LOCK_EX)) {
+        if (is_resource($handle)) {
+            fclose($handle);
+        }
+
+        return false;
+    }
+
+    $stat = fstat($handle);
+    $is_new_file = is_array($stat) && empty($stat['size']);
+    $written = true;
+
+    if ($is_new_file) {
+        $written = fwrite($handle, bazara_stock_guard_review_log_file_header()) !== false;
+    }
+
+    if ($written) {
+        fseek($handle, 0, SEEK_END);
+        $written = fwrite($handle, $encoded_event . PHP_EOL) !== false;
+    }
+
+    fflush($handle);
+    flock($handle, LOCK_UN);
+    fclose($handle);
+
+    if ($written) {
+        @chmod($file_path, 0640);
+    }
+
+    return $written;
+}
+
+function bazara_schedule_stock_guard_review_log_cleanup()
+{
+    if (!wp_next_scheduled('bazara_prune_stock_guard_review_logs')) {
+        wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'bazara_prune_stock_guard_review_logs');
+    }
+}
+
+function bazara_prune_stock_guard_review_logs()
+{
+    $directory = bazara_stock_guard_review_log_directory();
+
+    if (!is_dir($directory)) {
+        return;
+    }
+
+    $expiration = time() - (90 * DAY_IN_SECONDS);
+    $files = glob(trailingslashit($directory) . 'stock-guard-review-????-??-??.log.php') ?: [];
+
+    foreach ($files as $file_path) {
+        if (!preg_match('/^stock-guard-review-\d{4}-\d{2}-\d{2}\.log\.php$/', basename($file_path))) {
+            continue;
+        }
+
+        if (is_file($file_path) && filemtime($file_path) < $expiration) {
+            @unlink($file_path);
+        }
+    }
+}
+
+function bazara_stock_guard_review_log_files()
+{
+    $directory = bazara_stock_guard_review_log_directory();
+
+    if (!is_dir($directory)) {
+        return [];
+    }
+
+    $files = [];
+
+    foreach (glob(trailingslashit($directory) . 'stock-guard-review-????-??-??.log.php') ?: [] as $file_path) {
+        if (is_file($file_path) && preg_match('/^stock-guard-review-\d{4}-\d{2}-\d{2}\.log\.php$/', basename($file_path))) {
+            $files[] = $file_path;
+        }
+    }
+
+    rsort($files, SORT_STRING);
+
+    return $files;
+}
+
+function bazara_stock_guard_read_review_log_file_events($file_path)
+{
+    if (!is_string($file_path) || !is_readable($file_path)) {
+        return [];
+    }
+
+    $handle = @fopen($file_path, 'r');
+
+    if (!is_resource($handle)) {
+        return [];
+    }
+
+    $payload_started = false;
+    $events = [];
+
+    while (($line = fgets($handle)) !== false) {
+        if (!$payload_started) {
+            if (trim($line) === '__halt_compiler();') {
+                $payload_started = true;
+            }
+
+            continue;
+        }
+
+        $event = json_decode($line, true);
+
+        if (is_array($event) && !empty($event['event_id']) && !empty($event['order_id'])) {
+            $events[] = $event;
+        }
+    }
+
+    fclose($handle);
+
+    return $events;
+}
+
+/**
+ * تعداد تمام گزارش‌های نگه‌داری‌شده را بدون محدودیت نمایش محاسبه می‌کند.
+ */
+function bazara_stock_guard_count_review_events()
+{
+    $total = 0;
+
+    foreach (bazara_stock_guard_review_log_files() as $file_path) {
+        $total += count(bazara_stock_guard_read_review_log_file_events($file_path));
+    }
+
+    return $total;
+}
+
+/**
+ * گزارش‌ها را از جدید به قدیم و با offset و limit اختیاری برمی‌گرداند.
+ * limit برابر صفر یعنی همه گزارش‌های نگه‌داری‌شده خوانده شوند.
+ */
+function bazara_stock_guard_read_review_events($limit = 0, $offset = 0)
+{
+    $limit = max(0, (int)$limit);
+    $offset = max(0, (int)$offset);
+    $events = [];
+    $skipped = 0;
+
+    foreach (bazara_stock_guard_review_log_files() as $file_path) {
+        $file_events = bazara_stock_guard_read_review_log_file_events($file_path);
+
+        foreach (array_reverse($file_events) as $event) {
+            if ($skipped < $offset) {
+                $skipped++;
+                continue;
+            }
+
+            $events[] = $event;
+
+            if ($limit > 0 && count($events) >= $limit) {
+                return $events;
+            }
+        }
+    }
+
+    return $events;
+}
+
+function bazara_stock_guard_review_table_columns()
+{
+    return [
+        'occurred_at' => 'زمان ثبت',
+        'order' => 'سفارش',
+        'order_status' => 'وضعیت سفارش',
+        'checkout_channel' => 'مسیر ثبت سفارش',
+        'failure_code' => 'علت نیاز به بررسی',
+        'items' => 'اقلام نیازمند بررسی',
+    ];
+}
+
+/**
+ * ستون‌های Screen Options به‌صورت جداگانه ثبت می‌شوند تا متن و گزینه‌ها فارسی باشند.
+ */
+function bazara_stock_guard_review_screen_columns($columns)
+{
+    return array_merge([
+        '_title' => 'ستون‌ها',
+    ], bazara_stock_guard_review_table_columns());
+}
+
+/**
+ * ترجمه فقط در Screen Options همین گزارش اعمال می‌شود و متن‌های هسته را خارج از این صفحه تغییر نمی‌دهد.
+ */
+function bazara_stock_guard_review_screen_options_gettext($translated_text, $text, $domain)
+{
+    $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : '';
+
+    if (!is_admin() || $domain !== 'default' || $tab !== 'connection_outage_reports') {
+        return $translated_text;
+    }
+
+    $translations = [
+        'Screen Options' => 'تنظیمات صفحه',
+        'Columns' => 'ستون‌ها',
+        'Pagination' => 'صفحه‌بندی',
+        'Number of items per page:' => 'تعداد گزارش‌ها در هر صفحه:',
+        'Apply' => 'اعمال',
+    ];
+
+    return $translations[$text] ?? $translated_text;
+}
+
+if (is_admin() && !class_exists('Bazara_Stock_Guard_Review_Table')) {
+    if (!class_exists('WP_List_Table')) {
+        require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
+    }
+
+    class Bazara_Stock_Guard_Review_Table extends WP_List_Table
+    {
+        public function __construct()
+        {
+            parent::__construct([
+                'singular' => 'گزارش قطعی ارتباط',
+                'plural' => 'گزارش‌های قطعی ارتباط',
+                'ajax' => false,
+            ]);
+        }
+
+        public function get_columns()
+        {
+            return bazara_stock_guard_review_table_columns();
+        }
+
+        public function prepare_items()
+        {
+            $per_page = max(1, $this->get_items_per_page('bazara_stock_guard_review_per_page', 10));
+            $current_page = $this->get_pagenum();
+            $total_items = bazara_stock_guard_count_review_events();
+            $columns = $this->get_columns();
+            $hidden = get_hidden_columns($this->screen);
+
+            $this->_column_headers = [$columns, $hidden, []];
+            $this->items = bazara_stock_guard_read_review_events(
+                $per_page,
+                ($current_page - 1) * $per_page
+            );
+            $this->set_pagination_args([
+                'total_items' => $total_items,
+                'per_page' => $per_page,
+            ]);
+        }
+
+        public function column_occurred_at($item)
+        {
+            return esc_html(sanitize_text_field((string)($item['occurred_at'] ?? '—')));
+        }
+
+        public function column_order($item)
+        {
+            $order_id = (int)($item['order_id'] ?? 0);
+            $order_number = sanitize_text_field((string)($item['order_number'] ?? $order_id));
+            $order_edit_url = $order_id > 0 ? get_edit_post_link($order_id, '') : '';
+
+            if (!empty($order_edit_url)) {
+                return '<a href="' . esc_url($order_edit_url) . '">#' . esc_html($order_number) . '</a>';
+            }
+
+            return '#' . esc_html($order_number);
+        }
+
+        public function column_order_status($item)
+        {
+            $order_status = sanitize_key($item['order_status'] ?? '');
+
+            if ($order_status === '') {
+                return '—';
+            }
+
+            $order_status_key = strpos($order_status, 'wc-') === 0
+                ? $order_status
+                : 'wc-' . $order_status;
+            $order_status_label = function_exists('wc_get_order_status_name')
+                ? wc_get_order_status_name($order_status_key)
+                : $order_status;
+
+            return esc_html($order_status_label);
+        }
+
+        public function column_checkout_channel($item)
+        {
+            return esc_html(
+                ($item['checkout_channel'] ?? '') === 'store_api'
+                    ? 'فروشگاه بلوکی'
+                    : 'پرداخت معمول ووکامرس'
+            );
+        }
+
+        public function column_failure_code($item)
+        {
+            return esc_html(
+                bazara_stock_guard_review_failure_label(sanitize_key($item['failure_code'] ?? ''))
+            );
+        }
+
+        public function column_items($item)
+        {
+            return esc_html(
+                bazara_stock_guard_review_items_summary((array)($item['items'] ?? []))
+            );
+        }
+
+        public function column_default($item, $column_name)
+        {
+            return '—';
+        }
+
+        public function no_items()
+        {
+            echo esc_html('تا این لحظه رخدادی برای بررسی دستی ثبت نشده است.');
+        }
+    }
+}
+
+function bazara_stock_guard_review_items_summary(array $items)
+{
+    $item_summaries = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $item_name = sanitize_text_field((string)($item['name'] ?? 'کالای نامشخص'));
+        $item_details = [];
+        $mahak_product_id = (int)($item['mahak_product_id'] ?? 0);
+        $mahak_detail_id = (int)($item['mahak_detail_id'] ?? 0);
+        $mahak_asset_id = (int)($item['mahak_store_asset_id'] ?? 0);
+        $wc_product_id = (int)($item['wc_product_id'] ?? 0);
+        $wc_variation_id = (int)($item['wc_variation_id'] ?? 0);
+        $sku = sanitize_text_field((string)($item['sku'] ?? ''));
+        $attributes = [];
+
+        if ($wc_product_id > 0) {
+            $item_details[] = 'محصول ووکامرس: ' . $wc_product_id;
+        }
+
+        if ($wc_variation_id > 0) {
+            $item_details[] = 'وارییشن ووکامرس: ' . $wc_variation_id;
+        }
+
+        if ($sku !== '') {
+            $item_details[] = 'SKU: ' . $sku;
+        }
+
+        if ($mahak_product_id > 0) {
+            $item_details[] = 'محصول محک: ' . $mahak_product_id;
+        }
+
+        if ($mahak_detail_id > 0) {
+            $item_details[] = 'جزئیات محک: ' . $mahak_detail_id;
+        }
+
+        if ($mahak_asset_id > 0) {
+            $item_details[] = 'دارایی محک: ' . $mahak_asset_id;
+        }
+
+        foreach ((array)($item['variation_attributes'] ?? []) as $attribute_value) {
+            $attribute_value = sanitize_text_field((string)$attribute_value);
+
+            if ($attribute_value !== '') {
+                $attributes[] = $attribute_value;
+            }
+        }
+
+        if (!empty($attributes)) {
+            $item_details[] = 'ویژگی: ' . implode('، ', $attributes);
+        }
+
+        $item_summaries[] = $item_name . ' × '
+            . number_format_i18n((float)($item['quantity'] ?? 0))
+            . (empty($item_details) ? '' : ' (' . implode('، ', $item_details) . ')');
+    }
+
+    return empty($item_summaries) ? 'اطلاعات کالا در دسترس نیست' : implode(' | ', $item_summaries);
+}
+
+/**
+ * گزارش رخدادهایی را نمایش می‌دهد که بررسی لحظه‌ای محک به‌دلیل خطای ارتباطی
+ * انجام نشده، اما سفارش برای پیگیری دستی ثبت شده است.
+ */
+function bazara_render_stock_guard_review_tab()
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('شما اجازه مشاهده این گزارش را ندارید.');
+    }
+
+    $review_table = new Bazara_Stock_Guard_Review_Table();
+    $review_table->prepare_items();
+    ?>
+    <div class="wrap">
+        <h2>گزارش قطعی ارتباط</h2>
+        <p>
+            در این جدول همه گزارش‌های نگه‌داری‌شده‌ای نمایش داده می‌شوند که بررسی لحظه‌ای موجودی محک
+            به‌دلیل قطعی ارتباط انجام نشده و برای بررسی دستی ثبت شده‌اند.
+        </p>
+        <form method="get">
+            <input type="hidden" name="page" value="bazara_settings_tabs" />
+            <input type="hidden" name="tab" value="connection_outage_reports" />
+            <?php $review_table->display(); ?>
+        </form>
+    </div>
+    <?php
+}
+
+function bazara_stock_guard_review_failure_label($failure_code)
+{
+    $labels = [
+        'login_failed' => 'دریافت توکن محک ناموفق بود',
+        'network_error' => 'خطای شبکه یا timeout',
+        'authentication_failed' => 'احراز هویت محک ناموفق بود',
+        'lookup_http_error' => 'پاسخ HTTP ناموفق از Lookup',
+        'empty_lookup_response' => 'پاسخ Lookup خالی بود',
+        'invalid_lookup_response' => 'پاسخ Lookup نامعتبر بود',
+        'lookup_failed' => 'بررسی Lookup ناموفق بود',
+    ];
+
+    return $labels[$failure_code] ?? 'بررسی موجودی محک ناموفق بود';
 }
 
 /*

@@ -125,6 +125,28 @@ class bazara
 	}
     public function screen_option() {
 
+        $tab = isset($_GET['tab']) ? sanitize_key(wp_unslash($_GET['tab'])) : '';
+
+        if ($tab === 'connection_outage_reports') {
+            $screen = get_current_screen();
+
+            if ($screen) {
+                add_filter(
+                    'manage_' . $screen->id . '_columns',
+                    'bazara_stock_guard_review_screen_columns'
+                );
+            }
+
+            add_filter('gettext', 'bazara_stock_guard_review_screen_options_gettext', 20, 3);
+            add_screen_option('per_page', [
+                'label' => 'تعداد گزارش‌های قطعی ارتباط در هر صفحه:',
+                'default' => 10,
+                'option' => 'bazara_stock_guard_review_per_page',
+            ]);
+
+            return;
+        }
+
 		$option = 'per_page';
 		$args   = [
 			'label'   => 'Products',
@@ -187,6 +209,8 @@ class bazara
                 class="nav-tab <?php echo isset($_GET['tab']) && $_GET['tab'] == 'tools' ? 'nav-tab-active' : ''; ?>">ابزار</a>
             <a href="?page=bazara_settings_tabs&tab=reports"
                 class="nav-tab <?php echo isset($_GET['tab']) && $_GET['tab'] == 'reports' ? 'nav-tab-active' : ''; ?>">گزارشات</a>
+            <a href="?page=bazara_settings_tabs&tab=connection_outage_reports"
+                class="nav-tab <?php echo isset($_GET['tab']) && $_GET['tab'] == 'connection_outage_reports' ? 'nav-tab-active' : ''; ?>">گزارش قطعی ارتباط</a>
         </nav>
         <h1 class="screen-reader-text">ابزار</h1>
         <?php
@@ -200,6 +224,9 @@ class bazara
                         break;
                     case 'reports':
                         $this->bazara_settings_reports_page();
+                        break;
+                    case 'connection_outage_reports':
+                        bazara_render_stock_guard_review_tab();
                         break;
                     default:
                         $this->bazara_settings_products_page();

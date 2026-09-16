@@ -149,14 +149,22 @@ final class Bazara_Stock_Guard
 
         foreach ($cart_requests as $request) {
             if ($request['mahak_product_id'] <= 0 || $request['mahak_detail_id'] <= 0) {
-                return [['reason' => 'verification_failed']];
+                return [[
+                    'reason' => 'mapping_invalid',
+                    'name' => $request['name'],
+                    'failure_code' => 'incomplete_mahak_mapping',
+                ]];
             }
         }
 
         $token_result = $this->api->login_token();
 
         if (empty($token_result['success']) || empty($token_result['message'])) {
-            return [['reason' => 'verification_failed']];
+            return [[
+                'reason' => 'verification_failed',
+                'failure_code' => 'login_failed',
+                'review_items' => array_values($cart_requests),
+            ]];
         }
 
         $lookup_cache = [];
@@ -173,7 +181,11 @@ final class Bazara_Stock_Guard
             $response = $this->api->lookup_product_info($product_id, $token_result['message']);
 
             if (empty($response['success']) || !is_array($response['message'] ?? null)) {
-                return [['reason' => 'verification_failed']];
+                return [[
+                    'reason' => 'verification_failed',
+                    'failure_code' => sanitize_key($response['failure_code'] ?? 'lookup_failed'),
+                    'review_items' => array_values($cart_requests),
+                ]];
             }
 
             $objects = $response['message'];
@@ -286,11 +298,28 @@ final class Bazara_Stock_Guard
                 : 'wc:' . $target_id;
 
             if (!isset($requests[$request_key])) {
+                $variation_attributes = [];
+
+                if ($variation_id > 0
+                    && $product
+                    && method_exists($product, 'get_variation_attributes')) {
+                    $variation_attributes = $product->get_variation_attributes();
+                }
+
                 $requests[$request_key] = [
                     'name' => $product ? $product->get_name() : '#' . $target_id,
                     'quantity' => 0.0,
+                    'wc_product_id' => $product_id,
+                    'wc_variation_id' => $variation_id,
+                    'sku' => $product && method_exists($product, 'get_sku')
+                        ? $product->get_sku()
+                        : '',
+                    'variation_attributes' => is_array($variation_attributes)
+                        ? $variation_attributes
+                        : [],
                     'mahak_product_id' => $mahak_product_id,
                     'mahak_detail_id' => $mahak_detail_id,
+                    'mahak_store_asset_id' => (int)get_post_meta($target_id, 'prop_id', true),
                 ];
             }
 
