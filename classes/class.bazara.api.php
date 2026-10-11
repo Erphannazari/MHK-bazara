@@ -3001,8 +3001,6 @@ class BazaraApi
             ];
         }
 
-        $hpos_enable = false;
-
         // $this->set_visitor_options($token);
         $this->visitor_options = get_bazara_visitor_options();
         $visitorId = (int) $this->visitor_options['VisitorId'];
@@ -3018,7 +3016,7 @@ class BazaraApi
 
         $options = $this->visitor_settings;
         $count2 = 0;
-        $hpos_enable = false;
+        $hpos_enable = get_option('woocommerce_custom_orders_table_enabled') === 'yes';
 
 
         $order = wc_get_order($order_id);
@@ -3976,7 +3974,8 @@ class BazaraApi
     }
     private function get_selected_bank_id($payment_method, $orderid)
     {
-        $hpos_enable = false;
+        
+        $hpos_enable = get_option('woocommerce_custom_orders_table_enabled') === 'yes';
 
         $options = $this->visitor_settings;
 
@@ -4003,7 +4002,7 @@ class BazaraApi
     {
         $checkError = true;
         $orderDetailError = $orderError = true;
-        $hpos_enable = false;
+        $hpos_enable = get_option('woocommerce_custom_orders_table_enabled') === 'yes';
 
         if (isset($error['message'])) {
             $error = $error['message'];
