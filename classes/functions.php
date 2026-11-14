@@ -1518,6 +1518,26 @@ function create_product($args)
         // جستجوی محصول: ابتدا از روی SKU، سپس از روی mahak_id
         // اگر SKU تکراری بود، mahak_id محصول قبلی را پاک می‌کند
         $product = bazara_get_product_by_sku($product_code);
+
+        // اگر کالای محک دارای جزئیات (متغیر) باشد و بخواهد داخل یک variation
+        // از محصول متغیرِ ساخته‌شده توسط مشتری بنشیند، از آن عبور می‌کنیم.
+        if (
+            empty($args['deleted'])
+            && !empty($product)
+            && $product instanceof WC_Product
+            && (!empty($args['vars']) || (isset($args['type']) && $args['type'] === 'variable'))
+            && ($product->is_type('variation') || $product->get_parent_id() > 0)
+        ) {
+            return array(
+                'success' => false,
+                'message' => sprintf(
+                    'کالای «%s» (کد %s) در محک دارای جزئیات است و نمی‌تواند به‌عنوان متغیر یک محصول متغیر همگام‌سازی شود.',
+                    !empty($args['name']) ? $args['name'] : '',
+                    $product_code
+                ),
+            );
+        }
+
         if (!empty($product)) {
             $pp = get_product_by_mahakID($product_id);
             if (!empty($pp)) {
@@ -2122,6 +2142,12 @@ function create_variations($product_id, $args, $final_price, $wholeSalePrice, $c
 
     // دریافت شیء محصول متغیر (والد)
     $product = wc_get_product($product_id);
+
+    // یک variation هرگز نباید والدِ variation دیگری شود.
+    if (!$product || !($product instanceof WC_Product) || $product->is_type('variation') || $product->get_parent_id() > 0) {
+        // error_log('Bazara: refused to create a variation under a variation (parent ID: ' . (int) $product_id . ')');
+        return false;
+    }
 
     if (empty($variation)) {
         if ($args['deleted'] == 1 || $args['deleted']) {
