@@ -1,11 +1,11 @@
 <?php 
 defined( 'ABSPATH' ) || exit;
-$send_person = ($visitorOption['chkCustomer'] );
+$send_person = !empty($visitorOption['chkCustomer']);
 $toggle_send_person = !empty($visitorOption['radioCustomer']);
-$receive_person = ($visitorOption['chkCustomersMahak'] );
-$guest_person = ($visitorOption['chkGuestCustomer'] );
-$register_person = ($visitorOption['radioCustomer'] == BAZARA_PERSON_REGISTER );
-$General_person = ($visitorOption['radioCustomer'] == BAZARA_PERSON_GENERAL );
+$receive_person = !empty($visitorOption['chkCustomersMahak']);
+$guest_person = !empty($visitorOption['chkGuestCustomer']);
+$register_person = (!empty($visitorOption['radioCustomer']) && $visitorOption['radioCustomer'] == BAZARA_PERSON_REGISTER);
+$General_person = (!empty($visitorOption['radioCustomer']) && $visitorOption['radioCustomer'] == BAZARA_PERSON_GENERAL);
 $General_customer = empty($visitorOption['generalCustomerID']  )? '' : $visitorOption['generalCustomerID'];
 $guest_customer = empty($visitorOption['guestPersonID']  ) ? '' : $visitorOption['guestPersonID'];
 $group_customer = empty($visitorOption['customerGroupID']  ) ? '' : $visitorOption['customerGroupID'];

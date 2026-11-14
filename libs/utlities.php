@@ -4,12 +4,6 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 require_once "jdf.php";
-function get_user_transactions($PersonID = '',$dateFrom='',$dateTo='')
-{
-    global  $wpdb;
-    $query = $wpdb->prepare("SELECT * FROM {$wpdb->prefix}bazara_transactions bz where bz.PersonId = %s AND bz.Deleted = 0 AND CASE WHEN %s <> '' THEN (DATE(bz.Date) >= DATE(%s) AND DATE(bz.Date) <= DATE(%s)) ELSE -1 END ORDER BY bz.ROW ASC",$PersonID,$dateFrom,$dateFrom,$dateTo) ;
-	return $wpdb->get_results($query);
-}
 function mahak_price($price){
 	if(empty($price))
 		return 0;
